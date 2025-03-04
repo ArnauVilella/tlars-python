@@ -69,11 +69,12 @@ environment = {PIP_PREFER_BINARY = "1"}
 [tool.cibuildwheel.linux]
 before-build = [
     "pip install numpy pybind11",
-    "yum install -y epel-release",
-    "yum install -y eigen3-devel || yum install -y eigen-devel",
-    "yum install -y armadillo-devel || yum install -y armadillo"
+    "yum install -y cmake make gcc-c++ wget",
+    "mkdir -p /tmp/eigen && cd /tmp/eigen && curl -L https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz | tar xz && cd eigen-3.4.0 && mkdir build && cd build && cmake .. && make install",
+    "yum install -y blas-devel lapack-devel",
+    "mkdir -p /tmp/armadillo && cd /tmp/armadillo && curl -L http://sourceforge.net/projects/arma/files/armadillo-11.4.3.tar.xz | tar xJ && cd armadillo-11.4.3 && mkdir build && cd build && cmake .. && make install"
 ]
-environment = {EIGEN_INCLUDE_DIR = "/usr/include/eigen3", ARMADILLO_INCLUDE_DIR = "/usr/include"}
+environment = {EIGEN_INCLUDE_DIR = "/usr/local/include/eigen3", ARMADILLO_INCLUDE_DIR = "/usr/local/include"}
 # Use manylinux2014 as the base image for better compatibility
 manylinux-x86_64-image = "manylinux2014"
 manylinux-i686-image = "manylinux2014"
