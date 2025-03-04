@@ -72,6 +72,9 @@ before-build = [
     "yum install -y eigen3-devel armadillo-devel || apt-get update && apt-get install -y libeigen3-dev libarmadillo-dev"
 ]
 environment = {EIGEN_INCLUDE_DIR = "/usr/include/eigen3", ARMADILLO_INCLUDE_DIR = "/usr/include"}
+# Use manylinux2014 as the base image for better compatibility
+manylinux-x86_64-image = "manylinux2014"
+manylinux-i686-image = "manylinux2014"
 
 [tool.cibuildwheel.macos]
 before-build = [
