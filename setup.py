@@ -67,7 +67,7 @@ tlars_extension = Extension(
 
 setup(
     name='tlars',
-    version='0.1.0',
+    version='0.1.1',
     description='Python implementation of the tlars package',
     author='Original: Jasin Machkour, Python port: Arnau Vilella',
     author_email='avp@connect.ust.hk',
