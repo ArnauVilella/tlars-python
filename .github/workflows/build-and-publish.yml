@@ -5,6 +5,7 @@ on:
     types: [created]
   workflow_dispatch:  # Allow manual triggering
 
+# Trying to build with simplified workflow
 jobs:
   build_and_publish:
     name: Build and publish Python distributions to PyPI
