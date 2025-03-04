@@ -59,7 +59,7 @@ multi_line_output = 3
 skip = ["pp*", "cp36-*", "cp37-*", "*-musllinux*"]
 
 # Test command to run after a wheel is built
-test-requires = ["pytest"]
+test-requires = ["pytest", "pytest-cov"]
 test-command = "pytest {package}/tlars/tests"
 
 # Environment variables for all platforms
