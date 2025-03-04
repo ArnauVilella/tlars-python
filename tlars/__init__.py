@@ -8,7 +8,7 @@ The package implements the Truncated Least Angle Regression algorithm for high-d
 statistical learning.
 """
 
-__version__ = "0.1.1"
+__version__ = "0.1.3"
 
 from ._tlars_cpp import TLARS as _TLARS
 import numpy as np

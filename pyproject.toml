@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tlars"
-version = "0.1.1"
+version = "0.1.3"
 description = "Python implementation of the tlars package"
 readme = "README.md"
 authors = [
