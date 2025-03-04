@@ -1,8 +1,16 @@
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 import numpy as np
 import os
 import sys
 import platform
+import subprocess
+
+# Try to get pybind11 include path using python -m pybind11 --includes
+try:
+    pybind11_include = subprocess.check_output(['python', '-m', 'pybind11', '--includes']).decode('utf-8').strip()
+    pybind11_include = pybind11_include.replace('-I', '').split()
+except:
+    pybind11_include = []
 
 # Get environment variables for include directories
 eigen_include_dir = os.environ.get('EIGEN_INCLUDE_DIR', '/usr/include/eigen3')
@@ -13,7 +21,7 @@ include_dirs = [
     np.get_include(),
     eigen_include_dir,
     armadillo_include_dir,
-]
+] + pybind11_include
 
 # Add platform-specific include directories
 if platform.system() == 'Windows':
@@ -38,6 +46,10 @@ else:  # Linux
     include_dirs.extend([
         f'/usr/include/python3.{sys.version_info.minor}',
         '/usr/include/pybind11',
+        # Add more potential pybind11 locations
+        '/usr/local/include/pybind11',
+        f'/usr/local/lib/python3.{sys.version_info.minor}/dist-packages/pybind11/include',
+        f'/usr/lib/python3/dist-packages/pybind11/include',
     ])
 
 # Set compiler flags
@@ -59,7 +71,7 @@ setup(
     description='Python implementation of the tlars package',
     author='Original: Jasin Machkour, Python port: Arnau Vilella',
     author_email='avp@connect.ust.hk',
-    packages=['tlars'],
+    packages=find_packages(),
     ext_modules=[tlars_extension],
     install_requires=[
         'numpy>=1.19.0'

@@ -26,11 +26,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libeigen3-dev libarmadillo-dev
+          python -m pip install --upgrade pip
+          python -m pip install pybind11 numpy
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
           brew install eigen armadillo
+          python -m pip install --upgrade pip
+          python -m pip install pybind11 numpy
 
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
@@ -43,6 +47,8 @@ jobs:
           ./vcpkg install armadillo:x64-windows
           ./vcpkg integrate install
           echo "VCPKG_ROOT=$PWD" >> $GITHUB_ENV
+          python -m pip install --upgrade pip
+          python -m pip install pybind11 numpy
 
       - name: Install cibuildwheel
         run: |
@@ -59,6 +65,7 @@ jobs:
           CIBW_SKIP: "pp* cp36-* cp37-* *-musllinux*"  # Skip PyPy and older Python versions
           CIBW_TEST_REQUIRES: "pytest"
           CIBW_TEST_COMMAND: "pytest {project}/tlars/tests"
+          CIBW_BUILD_VERBOSITY: 3  # Increase verbosity for debugging
         run: |
           python -m cibuildwheel --output-dir wheelhouse
 
@@ -82,7 +89,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install build
+          python -m pip install build pybind11 numpy
+          sudo apt-get update
+          sudo apt-get install -y libeigen3-dev libarmadillo-dev
 
       - name: Build sdist
         run: |

@@ -28,12 +28,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install build pytest numpy pybind11
+          python -c "import pybind11; print('pybind11 include path:', pybind11.get_include())"
           sudo apt-get update
           sudo apt-get install -y libeigen3-dev libarmadillo-dev
 
       - name: Build package
         run: |
           python -m build
+        env:
+          VERBOSE: 1
 
       - name: Test built package
         run: |
@@ -56,12 +59,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install build pytest numpy pybind11
+          python -c "import pybind11; print('pybind11 include path:', pybind11.get_include())"
           sudo apt-get update
           sudo apt-get install -y libeigen3-dev libarmadillo-dev
 
       - name: Build sdist
         run: |
           python -m build --sdist
+        env:
+          VERBOSE: 1
 
       - name: Test built sdist
         run: |
