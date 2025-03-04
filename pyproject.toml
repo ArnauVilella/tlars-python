@@ -69,7 +69,9 @@ environment = {PIP_PREFER_BINARY = "1"}
 [tool.cibuildwheel.linux]
 before-build = [
     "pip install numpy pybind11",
-    "yum install -y eigen3-devel armadillo-devel || apt-get update && apt-get install -y libeigen3-dev libarmadillo-dev"
+    "yum install -y epel-release",
+    "yum install -y eigen3-devel || yum install -y eigen-devel",
+    "yum install -y armadillo-devel || yum install -y armadillo"
 ]
 environment = {EIGEN_INCLUDE_DIR = "/usr/include/eigen3", ARMADILLO_INCLUDE_DIR = "/usr/include"}
 # Use manylinux2014 as the base image for better compatibility
