@@ -1,0 +1,47 @@
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel",
+    "pybind11>=2.6.0",
+    "numpy>=1.19.0",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tlars"
+version = "0.1.0"
+description = "Python implementation of the tlars package"
+readme = "README.md"
+authors = [
+    {name = "Original: Zhu Wang, Python port: Your Name", email = "your.email@example.com"}
+]
+license = {file = "LICENSE"}
+requires-python = ">=3.7"
+dependencies = [
+    "numpy>=1.19.0",
+    "scipy>=1.5.0",
+    "pandas>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov>=2.0",
+    "black>=22.0",
+    "isort>=5.0",
+    "flake8>=3.9",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tlars/tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=tlars"
+
+[tool.black]
+line-length = 88
+target-version = ["py37"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3 
