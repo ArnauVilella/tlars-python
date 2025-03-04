@@ -42,4 +42,37 @@ include = '\.pyi?$'
 
 [tool.isort]
 profile = "black"
-multi_line_output = 3 
+multi_line_output = 3
+
+[tool.cibuildwheel]
+# Skip PyPy and older Python versions
+skip = ["pp*", "cp36-*", "cp37-*", "*-musllinux*"]
+
+# Test command to run after a wheel is built
+test-requires = ["pytest"]
+test-command = "pytest {package}/tlars/tests"
+
+# Environment variables for all platforms
+environment = {PIP_PREFER_BINARY = "1"}
+
+# Platform-specific configurations
+[tool.cibuildwheel.linux]
+before-build = [
+    "pip install numpy pybind11",
+    "yum install -y eigen3-devel armadillo-devel || apt-get update && apt-get install -y libeigen3-dev libarmadillo-dev"
+]
+environment = {EIGEN_INCLUDE_DIR = "/usr/include/eigen3", ARMADILLO_INCLUDE_DIR = "/usr/include"}
+
+[tool.cibuildwheel.macos]
+before-build = [
+    "pip install numpy pybind11",
+    "brew install eigen armadillo"
+]
+environment = {EIGEN_INCLUDE_DIR = "/usr/local/include/eigen3", ARMADILLO_INCLUDE_DIR = "/usr/local/include"}
+
+[tool.cibuildwheel.windows]
+before-build = [
+    "pip install numpy pybind11",
+    "if not exist C:\\vcpkg\\installed\\x64-windows\\include\\eigen3 (git clone https://github.com/Microsoft/vcpkg.git C:\\vcpkg && C:\\vcpkg\\bootstrap-vcpkg.bat && C:\\vcpkg\\vcpkg install eigen3:x64-windows && C:\\vcpkg\\vcpkg install armadillo:x64-windows && C:\\vcpkg\\vcpkg integrate install)"
+]
+environment = {EIGEN_INCLUDE_DIR = "C:\\vcpkg\\installed\\x64-windows\\include\\eigen3", ARMADILLO_INCLUDE_DIR = "C:\\vcpkg\\installed\\x64-windows\\include"} 
