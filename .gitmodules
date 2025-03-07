@@ -1,12 +1,3 @@
-[submodule "tlars-python/pybind11"]
-	path = tlars-python/pybind11
-	url = https://github.com/pybind/pybind11.git
-[submodule "tlars-python/carma"]
-	path = tlars-python/carma
-	url = https://github.com/RUrlus/carma.git
-[submodule "tlars-python/vcpkg"]
-	path = tlars-python/vcpkg
-	url = https://github.com/microsoft/vcpkg.git
 [submodule "pybind11"]
 	path = pybind11
 	url = https://github.com/pybind/pybind11.git
