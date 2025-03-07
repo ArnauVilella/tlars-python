@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     
     steps:
     - uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.12'
     
     - name: Install dependencies (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
@@ -48,6 +48,27 @@ jobs:
         echo "LIBRARY_PATH=$(brew --prefix armadillo)/lib:$LIBRARY_PATH" >> $GITHUB_ENV
         echo "DYLD_LIBRARY_PATH=$(brew --prefix armadillo)/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
     
+    - name: Install dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine wheel setuptools numpy pybind11 cibuildwheel
+        
+        # Create a directory for Armadillo
+        mkdir C:\armadillo
+        
+        # Download and extract Armadillo
+        Invoke-WebRequest -Uri "http://sourceforge.net/projects/arma/files/armadillo-11.2.4.tar.xz" -OutFile "C:\armadillo\armadillo.tar.xz"
+        
+        # Use 7-Zip to extract (available by default on GitHub runners)
+        7z x C:\armadillo\armadillo.tar.xz -oC:\armadillo
+        7z x C:\armadillo\armadillo.tar -oC:\armadillo
+        
+        # Set environment variables
+        echo "ARMADILLO_INCLUDE_DIR=C:\armadillo\armadillo-11.2.4\include" | Out-File -FilePath $env:GITHUB_ENV -Append
+        echo "ARMA_USE_EXTERN_CXX11_RNG=1" | Out-File -FilePath $env:GITHUB_ENV -Append
+      shell: pwsh
+    
     - name: Debug environment (macOS)
       if: matrix.os == 'macos-latest'
       run: |
@@ -56,6 +77,17 @@ jobs:
         echo "Checking Armadillo installation:"
         ls -la $(brew --prefix armadillo)/include || echo "Cannot list include dir"
         ls -la $(brew --prefix armadillo)/lib || echo "Cannot list lib dir"
+    
+    - name: Debug environment (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        echo "Checking Armadillo installation:"
+        if (Test-Path -Path "$env:ARMADILLO_INCLUDE_DIR") {
+          Get-ChildItem "$env:ARMADILLO_INCLUDE_DIR"
+        } else {
+          echo "Cannot list Armadillo include dir"
+        }
+      shell: pwsh
     
     - name: Build wheels (Linux)
       if: matrix.os == 'ubuntu-latest'
@@ -72,6 +104,15 @@ jobs:
       env:
         CIBW_ARCHS_MACOS: "x86_64 arm64"
         CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
+      run: |
+        python -m cibuildwheel --output-dir dist
+    
+    - name: Build wheels (Windows)
+      if: matrix.os == 'windows-latest'
+      env:
+        CIBW_ENVIRONMENT: "ARMADILLO_INCLUDE_DIR=C:\\armadillo\\armadillo-11.2.4\\include ARMA_USE_EXTERN_CXX11_RNG=1"
+        CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
+        CIBW_ARCHS_WINDOWS: "AMD64"
       run: |
         python -m cibuildwheel --output-dir dist
     
