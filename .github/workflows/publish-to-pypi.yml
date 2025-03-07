@@ -54,18 +54,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install build twine wheel setuptools numpy pybind11 cibuildwheel
         
-        # Create a directory for Armadillo
-        mkdir C:\armadillo
-        
-        # Download and extract Armadillo
-        Invoke-WebRequest -Uri "http://sourceforge.net/projects/arma/files/armadillo-11.2.4.tar.xz" -OutFile "C:\armadillo\armadillo.tar.xz"
-        
-        # Use 7-Zip to extract (available by default on GitHub runners)
-        7z x C:\armadillo\armadillo.tar.xz -oC:\armadillo
-        7z x C:\armadillo\armadillo.tar -oC:\armadillo
+        # Clone Armadillo repository instead of downloading tarball
+        git clone --depth 1 https://gitlab.com/conradsnicta/armadillo-code.git C:\armadillo
         
         # Set environment variables
-        echo "ARMADILLO_INCLUDE_DIR=C:\armadillo\armadillo-11.2.4\include" | Out-File -FilePath $env:GITHUB_ENV -Append
+        echo "ARMADILLO_INCLUDE_DIR=C:\armadillo\include" | Out-File -FilePath $env:GITHUB_ENV -Append
         echo "ARMA_USE_EXTERN_CXX11_RNG=1" | Out-File -FilePath $env:GITHUB_ENV -Append
       shell: pwsh
     
@@ -110,7 +103,7 @@ jobs:
     - name: Build wheels (Windows)
       if: matrix.os == 'windows-latest'
       env:
-        CIBW_ENVIRONMENT: "ARMADILLO_INCLUDE_DIR=C:\\armadillo\\armadillo-11.2.4\\include ARMA_USE_EXTERN_CXX11_RNG=1"
+        CIBW_ENVIRONMENT: "ARMADILLO_INCLUDE_DIR=C:\\armadillo\\include ARMA_USE_EXTERN_CXX11_RNG=1"
         CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
         CIBW_ARCHS_WINDOWS: "AMD64"
       run: |
