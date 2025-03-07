@@ -54,12 +54,31 @@ jobs:
         python -m pip install --upgrade pip
         pip install build twine wheel setuptools numpy pybind11 cibuildwheel
         
-        # Clone Armadillo repository instead of downloading tarball
-        git clone --depth 1 https://gitlab.com/conradsnicta/armadillo-code.git C:\armadillo
+        # Create directory structure for Armadillo manually
+        $armaDir = "C:/armadillo"
+        $armaIncludeDir = "$armaDir/include"
+        $armaLibDir = "$armaDir/lib"
         
-        # Set environment variables
-        echo "ARMADILLO_INCLUDE_DIR=C:\armadillo\include" | Out-File -FilePath $env:GITHUB_ENV -Append
-        echo "ARMA_USE_EXTERN_CXX11_RNG=1" | Out-File -FilePath $env:GITHUB_ENV -Append
+        mkdir -Force $armaDir
+        mkdir -Force $armaIncludeDir
+        mkdir -Force $armaLibDir
+        
+        # Clone Armadillo repository
+        git clone --depth 1 https://gitlab.com/conradsnicta/armadillo-code.git "$env:TEMP/arma-clone"
+        
+        # Copy include files to the correct location
+        Copy-Item -Path "$env:TEMP/arma-clone/include/*" -Destination $armaIncludeDir -Recurse -Force
+        
+        # Create a dummy .lib file to satisfy the linker
+        # This works because we're using header-only mode
+        "// Dummy file for linking" | Out-File -FilePath "$armaLibDir/armadillo.lib"
+        
+        # Set environment variables with proper path format
+        echo "ARMADILLO_INCLUDE_DIR=C:/armadillo/include" >> $env:GITHUB_ENV
+        echo "ARMA_USE_EXTERN_CXX11_RNG=1" >> $env:GITHUB_ENV
+        
+        # Set environment variable for setup.py to properly recognize Windows
+        echo "PLATFORM=Windows" >> $env:GITHUB_ENV
       shell: pwsh
     
     - name: Debug environment (macOS)
@@ -74,11 +93,19 @@ jobs:
     - name: Debug environment (Windows)
       if: matrix.os == 'windows-latest'
       run: |
+        echo "Checking environment variables:"
+        echo "ARMADILLO_INCLUDE_DIR: $env:ARMADILLO_INCLUDE_DIR" 
+        echo "ARMA_USE_EXTERN_CXX11_RNG: $env:ARMA_USE_EXTERN_CXX11_RNG"
+        echo "PLATFORM: $env:PLATFORM"
+        
         echo "Checking Armadillo installation:"
-        if (Test-Path -Path "$env:ARMADILLO_INCLUDE_DIR") {
-          Get-ChildItem "$env:ARMADILLO_INCLUDE_DIR"
+        Get-ChildItem "C:/armadillo" -Recurse | Select-Object FullName
+        
+        echo "Checking if the armadillo header exists:"
+        if (Test-Path -Path "C:/armadillo/include/armadillo") {
+          Get-Content -Path "C:/armadillo/include/armadillo" -TotalCount 5
         } else {
-          echo "Cannot list Armadillo include dir"
+          echo "armadillo header not found"
         }
       shell: pwsh
     
@@ -103,7 +130,7 @@ jobs:
     - name: Build wheels (Windows)
       if: matrix.os == 'windows-latest'
       env:
-        CIBW_ENVIRONMENT: "ARMADILLO_INCLUDE_DIR=C:\\armadillo\\include ARMA_USE_EXTERN_CXX11_RNG=1"
+        CIBW_ENVIRONMENT: "ARMADILLO_INCLUDE_DIR=C:/armadillo/include ARMA_USE_EXTERN_CXX11_RNG=1 PLATFORM=Windows"
         CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
         CIBW_ARCHS_WINDOWS: "AMD64"
       run: |
