@@ -6,8 +6,13 @@ on:
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+  build_wheels:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    
     steps:
     - uses: actions/checkout@v3
       with:
@@ -18,13 +23,22 @@ jobs:
       with:
         python-version: '3.10'
     
-    - name: Install dependencies
+    - name: Install dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
       run: |
         python -m pip install --upgrade pip
         pip install build twine wheel setuptools numpy pybind11
         # Install Armadillo on Ubuntu
         sudo apt-get update
         sudo apt-get install -y libarmadillo-dev
+    
+    - name: Install dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine wheel setuptools numpy pybind11
+        # Install Armadillo on macOS
+        brew install armadillo
     
     - name: Build package
       run: |
@@ -34,10 +48,35 @@ jobs:
       run: |
         python -m twine check dist/*
     
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist-${{ matrix.os }}
+        path: dist/
+        retention-days: 5
+
+  publish:
+    name: Publish to PyPI
+    needs: build_wheels
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: dist
+    
+    - name: Prepare dist directory
+      run: |
+        mkdir -p dist_combined
+        find dist -name "*.whl" -o -name "*.tar.gz" | xargs -I {} cp {} dist_combined/
+        ls -la dist_combined/
+    
     - name: Publish package to PyPI
-      if: github.event_name == 'release'
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
+        packages-dir: dist_combined/
         skip-existing: true 
