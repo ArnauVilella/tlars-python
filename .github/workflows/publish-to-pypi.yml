@@ -57,11 +57,9 @@ jobs:
         # Create directory structure for Armadillo manually
         $armaDir = "C:/armadillo"
         $armaIncludeDir = "$armaDir/include"
-        $armaLibDir = "$armaDir/lib"
         
         mkdir -Force $armaDir
         mkdir -Force $armaIncludeDir
-        mkdir -Force $armaLibDir
         
         # Clone Armadillo repository
         git clone --depth 1 https://gitlab.com/conradsnicta/armadillo-code.git "$env:TEMP/arma-clone"
@@ -69,16 +67,42 @@ jobs:
         # Copy include files to the correct location
         Copy-Item -Path "$env:TEMP/arma-clone/include/*" -Destination $armaIncludeDir -Recurse -Force
         
-        # Create a dummy .lib file to satisfy the linker
-        # This works because we're using header-only mode
-        "// Dummy file for linking" | Out-File -FilePath "$armaLibDir/armadillo.lib"
-        
         # Set environment variables with proper path format
         echo "ARMADILLO_INCLUDE_DIR=C:/armadillo/include" >> $env:GITHUB_ENV
         echo "ARMA_USE_EXTERN_CXX11_RNG=1" >> $env:GITHUB_ENV
         
-        # Set environment variable for setup.py to properly recognize Windows
+        # Setting Windows-specific flags
         echo "PLATFORM=Windows" >> $env:GITHUB_ENV
+        echo "SKIP_ARMADILLO_LINKING=1" >> $env:GITHUB_ENV
+        echo "ARMA_DONT_USE_WRAPPER=1" >> $env:GITHUB_ENV
+        echo "ARMA_DONT_USE_BLAS=1" >> $env:GITHUB_ENV
+        echo "ARMA_DONT_USE_LAPACK=1" >> $env:GITHUB_ENV
+      shell: pwsh
+    
+    - name: Modify setup.py for Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+        # Add a small patch to setup.py to skip linking with armadillo on Windows
+        $setupFile = "setup.py"
+        $content = Get-Content $setupFile -Raw
+        
+        # Pattern to find the libraries list in the Windows section
+        $pattern = "if platform.system\(\) == 'Windows':\s+# Ensure proper path format with backslash after C:\s+lib_path = os.path.join\('C:', os.sep, 'armadillo', 'lib'\)\s+library_dirs.append\(lib_path\)"
+        
+        # Modify the content to not link with armadillo on Windows
+        $newCode = "if platform.system() == 'Windows' and not os.environ.get('SKIP_ARMADILLO_LINKING'):`n    # Ensure proper path format with backslash after C:`n    lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')`n    library_dirs.append(lib_path)"
+        $content = $content -replace $pattern, $newCode
+        
+        # Also modify the libraries list if SKIP_ARMADILLO_LINKING is set
+        $librariesPattern = "libraries = \['armadillo'\]"
+        $newLibrariesCode = "libraries = [] if os.environ.get('SKIP_ARMADILLO_LINKING') else ['armadillo']"
+        $content = $content -replace $librariesPattern, $newLibrariesCode
+        
+        # Write the modified content back
+        Set-Content $setupFile $content
+        
+        # Print the changes
+        echo "Modified setup.py to skip linking with armadillo on Windows"
       shell: pwsh
     
     - name: Debug environment (macOS)
@@ -97,6 +121,8 @@ jobs:
         echo "ARMADILLO_INCLUDE_DIR: $env:ARMADILLO_INCLUDE_DIR" 
         echo "ARMA_USE_EXTERN_CXX11_RNG: $env:ARMA_USE_EXTERN_CXX11_RNG"
         echo "PLATFORM: $env:PLATFORM"
+        echo "SKIP_ARMADILLO_LINKING: $env:SKIP_ARMADILLO_LINKING"
+        echo "ARMA_DONT_USE_WRAPPER: $env:ARMA_DONT_USE_WRAPPER"
         
         echo "Checking Armadillo installation:"
         Get-ChildItem "C:/armadillo" -Recurse | Select-Object FullName
@@ -107,6 +133,9 @@ jobs:
         } else {
           echo "armadillo header not found"
         }
+        
+        echo "Checking the modified setup.py:"
+        Get-Content "setup.py" | Select-String -Pattern "SKIP_ARMADILLO_LINKING"
       shell: pwsh
     
     - name: Build wheels (Linux)
@@ -130,7 +159,7 @@ jobs:
     - name: Build wheels (Windows)
       if: matrix.os == 'windows-latest'
       env:
-        CIBW_ENVIRONMENT: "ARMADILLO_INCLUDE_DIR=C:/armadillo/include ARMA_USE_EXTERN_CXX11_RNG=1 PLATFORM=Windows"
+        CIBW_ENVIRONMENT: "ARMADILLO_INCLUDE_DIR=C:/armadillo/include ARMA_USE_EXTERN_CXX11_RNG=1 PLATFORM=Windows SKIP_ARMADILLO_LINKING=1 ARMA_DONT_USE_WRAPPER=1 ARMA_DONT_USE_BLAS=1 ARMA_DONT_USE_LAPACK=1"
         CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
         CIBW_ARCHS_WINDOWS: "AMD64"
       run: |
