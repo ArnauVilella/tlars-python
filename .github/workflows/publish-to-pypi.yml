@@ -39,6 +39,23 @@ jobs:
         pip install build twine wheel setuptools numpy pybind11
         # Install Armadillo on macOS
         brew install armadillo
+        # Find where Armadillo is installed
+        echo "Armadillo location:"
+        find /usr/local /opt/homebrew -name "armadillo" -type d 2>/dev/null || echo "Not found in standard locations"
+        
+        # Export environment variables for the build process
+        echo "CPLUS_INCLUDE_PATH=$(brew --prefix armadillo)/include:$CPLUS_INCLUDE_PATH" >> $GITHUB_ENV
+        echo "LIBRARY_PATH=$(brew --prefix armadillo)/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+        echo "DYLD_LIBRARY_PATH=$(brew --prefix armadillo)/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
+    
+    - name: Debug environment (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        echo "CPLUS_INCLUDE_PATH: $CPLUS_INCLUDE_PATH"
+        echo "LIBRARY_PATH: $LIBRARY_PATH"
+        echo "Checking Armadillo installation:"
+        ls -la $(brew --prefix armadillo)/include || echo "Cannot list include dir"
+        ls -la $(brew --prefix armadillo)/lib || echo "Cannot list lib dir"
     
     - name: Build package
       run: |
