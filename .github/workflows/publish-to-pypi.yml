@@ -79,35 +79,75 @@ jobs:
         echo "ARMA_DONT_USE_LAPACK=1" >> $env:GITHUB_ENV
       shell: pwsh
     
-    - name: Create simplified setup.py for Windows
+    - name: Create Windows setup.py
       if: matrix.os == 'windows-latest'
       run: |
-        # Create a Python script to modify setup.py for Windows
-        echo "import os, sys, re" > modify_setup.py
-        echo "# Read setup.py" >> modify_setup.py
-        echo "with open('setup.py', 'r') as f:" >> modify_setup.py
-        echo "    content = f.read()" >> modify_setup.py
-        echo "# Backup original file" >> modify_setup.py
-        echo "with open('setup.py.bak', 'w') as f:" >> modify_setup.py
-        echo "    f.write(content)" >> modify_setup.py
-        echo "# Replace version" >> modify_setup.py
-        echo "content = re.sub(r'__version__ = [\'\\"].*?[\'\\"]', '__version__ = \"0.0.1\"', content)" >> modify_setup.py
-        echo "# Replace libraries list" >> modify_setup.py
-        echo "content = re.sub(r'libraries = \[[\'\\"]armadillo[\'\\"]\]', 'libraries = []', content)" >> modify_setup.py
-        echo "# Replace Windows library dir addition" >> modify_setup.py
-        echo "windows_lib_pattern = r'if platform.system\\(\\) == [\'\\"]Windows[\'\\"]:.*?library_dirs.append\\(lib_path\\)'" >> modify_setup.py
-        echo "windows_lib_replacement = 'if platform.system() == \"Windows\" and not os.environ.get(\"SKIP_ARMADILLO_LINKING\"):\\n    # Ensure proper path format\\n    lib_path = os.path.join(\"C:\", os.sep, \"armadillo\", \"lib\")\\n    library_dirs.append(lib_path)'" >> modify_setup.py
-        echo "content = re.sub(windows_lib_pattern, windows_lib_replacement, content, flags=re.DOTALL)" >> modify_setup.py
-        echo "# Write the modified content back" >> modify_setup.py
-        echo "with open('setup.py', 'w') as f:" >> modify_setup.py
-        echo "    f.write(content)" >> modify_setup.py
-        echo "print('Setup.py modified for Windows')" >> modify_setup.py
+        # Create a file for creating the setup.py
+        echo 'from setuptools import setup, Extension' > create_setup.py
+        echo 'from setuptools.command.build_ext import build_ext' >> create_setup.py
+        echo 'import sys, os, numpy as np' >> create_setup.py
+        echo '' >> create_setup.py
+        echo 'content = """' >> create_setup.py
+        echo 'from setuptools import setup, Extension' >> create_setup.py
+        echo 'from setuptools.command.build_ext import build_ext' >> create_setup.py
+        echo 'import sys, os, numpy as np' >> create_setup.py
+        echo '' >> create_setup.py
+        echo '__version__ = "0.0.1"' >> create_setup.py
+        echo '' >> create_setup.py
+        echo 'include_dirs = [' >> create_setup.py
+        echo '    "pybind11/include",' >> create_setup.py
+        echo '    "carma/include",' >> create_setup.py
+        echo '    "/usr/include",' >> create_setup.py
+        echo '    "src",' >> create_setup.py
+        echo '    np.get_include(),' >> create_setup.py
+        echo ']' >> create_setup.py
+        echo '' >> create_setup.py
+        echo 'armadillo_include = os.environ.get("ARMADILLO_INCLUDE_DIR", "").strip()' >> create_setup.py
+        echo 'if armadillo_include:' >> create_setup.py
+        echo '    include_dirs.append(armadillo_include)' >> create_setup.py
+        echo '' >> create_setup.py
+        echo '# Empty libraries for Windows' >> create_setup.py
+        echo 'libraries = []' >> create_setup.py
+        echo 'library_dirs = []' >> create_setup.py
+        echo '' >> create_setup.py
+        echo 'class BuildExt(build_ext):' >> create_setup.py
+        echo '    def build_extensions(self):' >> create_setup.py
+        echo '        ct = self.compiler.compiler_type' >> create_setup.py
+        echo '        opts = ["/EHsc", "/std:c++14"] if ct == "msvc" else []' >> create_setup.py
+        echo '        for ext in self.extensions:' >> create_setup.py
+        echo '            ext.extra_compile_args = opts' >> create_setup.py
+        echo '        build_ext.build_extensions(self)' >> create_setup.py
+        echo '' >> create_setup.py
+        echo 'setup(' >> create_setup.py
+        echo '    ext_modules=[' >> create_setup.py
+        echo '        Extension(' >> create_setup.py
+        echo '            "tlars.tlars_cpp",' >> create_setup.py
+        echo '            ["src/tlars_cpp.cpp", "src/tlars_cpp_pybind.cpp"],' >> create_setup.py
+        echo '            include_dirs=include_dirs,' >> create_setup.py
+        echo '            library_dirs=library_dirs,' >> create_setup.py
+        echo '            libraries=libraries,' >> create_setup.py
+        echo '            language="c++"' >> create_setup.py
+        echo '        ),' >> create_setup.py
+        echo '    ],' >> create_setup.py
+        echo '    cmdclass={"build_ext": BuildExt},' >> create_setup.py
+        echo ')' >> create_setup.py
+        echo '"""' >> create_setup.py
+        echo '' >> create_setup.py
+        echo '# Backup the original setup.py' >> create_setup.py
+        echo 'import shutil' >> create_setup.py
+        echo 'shutil.copy("setup.py", "setup.py.bak")' >> create_setup.py
+        echo '' >> create_setup.py
+        echo '# Write the new setup.py' >> create_setup.py
+        echo 'with open("setup.py", "w") as f:' >> create_setup.py
+        echo '    f.write(content)' >> create_setup.py
+        echo '' >> create_setup.py
+        echo 'print("Created Windows-specific setup.py")' >> create_setup.py
         
-        # Run the Python script
-        python modify_setup.py
+        # Run the Python script to create setup.py
+        python create_setup.py
         
-        # Check the result
-        echo "Checking the modified setup.py:"
+        # Verify the content
+        echo "Checking setup.py:"
         Get-Content "setup.py" | Select-String -Pattern "libraries ="
       shell: pwsh
     
