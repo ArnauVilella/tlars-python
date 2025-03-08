@@ -45,14 +45,40 @@ else:
 
 library_dirs = []
 if platform.system() == 'Windows':
-    # Ensure proper path format with backslash after C:
-    lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')
-    library_dirs.append(lib_path)
-    print(f"Using hardcoded Windows Armadillo lib path: {lib_path}")
+    # Check if we should skip armadillo linking
+    skip_linking = os.environ.get('SKIP_ARMADILLO_LINKING', '').strip() == '1'
+    if not skip_linking:
+        # Ensure proper path format with backslash after C:
+        lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')
+        library_dirs.append(lib_path)
+        print(f"Using hardcoded Windows Armadillo lib path: {lib_path}")
+    else:
+        print("Skipping Armadillo library directory setup due to SKIP_ARMADILLO_LINKING=1")
 
 libraries = []
 if platform.system() == 'Windows':
-    libraries.append('armadillo')
+    skip_linking = os.environ.get('SKIP_ARMADILLO_LINKING', '').strip() == '1'
+    if not skip_linking:
+        libraries.append('armadillo')
+        print("Adding armadillo to libraries list")
+    else:
+        print("Skipping armadillo linking as requested by SKIP_ARMADILLO_LINKING=1")
+
+# Define macros to disable BLAS/LAPACK
+define_macros = [
+    ("ARMA_DONT_USE_LAPACK", "1"),
+    ("ARMA_DONT_USE_BLAS", "1"),
+    ("ARMA_DONT_USE_WRAPPER", "1"),
+    ("ARMA_DONT_USE_STD_MUTEX", "1"),  # Updated from CXX11_MUTEX which is deprecated
+    ("ARMA_USE_EXTERN_CXX11_RNG", "1"),
+]
+
+# Add platform-specific environment-controlled macros
+if platform.system() == 'Windows':
+    for env_var in ['ARMA_DONT_USE_LAPACK', 'ARMA_DONT_USE_BLAS', 
+                    'ARMA_DONT_USE_WRAPPER', 'ARMA_USE_EXTERN_CXX11_RNG']:
+        if os.environ.get(env_var, '').strip() == '1':
+            print(f"Ensuring macro {env_var}=1 is defined based on environment variable")
 
 # Define the extension module
 ext_modules = [
@@ -62,13 +88,7 @@ ext_modules = [
         include_dirs=include_dirs,
         library_dirs=library_dirs,
         libraries=libraries,
-        define_macros=[
-            ("ARMA_DONT_USE_LAPACK", "1"),
-            ("ARMA_DONT_USE_BLAS", "1"),
-            ("ARMA_DONT_USE_WRAPPER", "1"),
-            ("ARMA_DONT_USE_CXX11_MUTEX", "1"),
-            ("ARMA_USE_EXTERN_CXX11_RNG", "1"),
-        ],
+        define_macros=define_macros,
         language='c++'
     ),
 ]
@@ -123,6 +143,16 @@ class BuildExt(build_ext):
                 opts.append('-fvisibility=hidden')
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
+            
+            # Add Windows-specific flags for Armadillo
+            if os.environ.get('ARMA_DONT_USE_LAPACK', '').strip() == '1':
+                opts.append('/DARMA_DONT_USE_LAPACK')
+            if os.environ.get('ARMA_DONT_USE_BLAS', '').strip() == '1':
+                opts.append('/DARMA_DONT_USE_BLAS')
+            if os.environ.get('ARMA_DONT_USE_WRAPPER', '').strip() == '1':
+                opts.append('/DARMA_DONT_USE_WRAPPER')
+            if os.environ.get('ARMA_USE_EXTERN_CXX11_RNG', '').strip() == '1':
+                opts.append('/DARMA_USE_EXTERN_CXX11_RNG')
             
             # Debugging information for Windows
             print(f"Compiler type: {ct}")
