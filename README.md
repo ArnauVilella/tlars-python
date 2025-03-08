@@ -10,44 +10,40 @@ This Python package provides a port of the original R implementation by Jasin Ma
 
 ## Installation
 
-### Prerequisites
-
-- Python 3.6+
-- NumPy
-- Matplotlib (for visualization)
-- A C++ compiler (GCC, Clang, MSVC, etc.)
-- Armadillo C++ library (not required for pip installation on Windows)
-
-### Installing with pip
-
 The package is available on PyPI for Windows, macOS, and Linux:
 
 ```bash
 pip install tlars
 ```
 
-This is the recommended installation method as it will automatically install pre-built wheels for your platform without requiring you to install Armadillo separately.
+This is the recommended installation method as it will automatically install pre-built wheels for your platform with all required dependencies.
 
-### Installing Armadillo (for manual builds)
+### Building from source
 
-If you want to build the package from source, you'll need to install the Armadillo C++ library first:
+If you need to build the package from source, you'll need the following prerequisites:
 
-#### Ubuntu/Debian
+- Python 3.6+
+- NumPy
+- Matplotlib (for visualization)
+- A C++ compiler (GCC, Clang, MSVC, etc.)
+- Armadillo C++ library (not required for Windows builds)
+
+#### Installing Armadillo (for Linux/macOS builds)
+
+##### Ubuntu/Debian
 ```bash
 sudo apt-get install libarmadillo-dev
 ```
 
-#### macOS
+##### macOS
 ```bash
 brew install armadillo
 ```
 
-#### Windows
-For Windows, the package will build without requiring a separate Armadillo installation when installing via pip. If building manually, the build process will handle the Armadillo headers automatically.
+##### Windows
+For Windows builds, the package will handle the Armadillo headers automatically.
 
-### Building from source
-
-To manually build the package from source:
+#### Building steps
 
 ```bash
 # 1. Install the dependencies first
