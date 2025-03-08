@@ -182,7 +182,7 @@ setup(
     description='Python port of the tlars R package by Jasin Machkour',
     long_description='',
     ext_modules=ext_modules,
-    install_requires=['pybind11>=2.6.0', 'numpy>=1.19.0'],
+    install_requires=['pybind11>=2.6.0', 'numpy>=1.19.0', 'matplotlib>=3.3.0'],
     setup_requires=['pybind11>=2.6.0', 'numpy>=1.19.0'],
     cmdclass={'build_ext': BuildExt},
     packages=['tlars'],
