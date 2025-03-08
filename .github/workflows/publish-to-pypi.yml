@@ -90,77 +90,6 @@ jobs:
           echo "ARMA_DONT_USE_BLAS=1" >> $env:GITHUB_ENV
           echo "ARMA_DONT_USE_LAPACK=1" >> $env:GITHUB_ENV
       
-      - name: Create Windows setup.py
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          # Backup original setup.py
-          Copy-Item -Path "setup.py" -Destination "setup.py.bak" -Force
-          
-          # Create setup.py file content line by line
-          Set-Content -Path "setup.py" -Value "import os"
-          Add-Content -Path "setup.py" -Value "import sys"
-          Add-Content -Path "setup.py" -Value "import numpy as np"
-          Add-Content -Path "setup.py" -Value "from setuptools import setup, Extension"
-          Add-Content -Path "setup.py" -Value "from setuptools.command.build_ext import build_ext"
-          Add-Content -Path "setup.py" -Value ""
-          Add-Content -Path "setup.py" -Value "__version__ = '0.0.1'"
-          Add-Content -Path "setup.py" -Value ""
-          Add-Content -Path "setup.py" -Value "include_dirs = ["
-          Add-Content -Path "setup.py" -Value "    'pybind11/include',"
-          Add-Content -Path "setup.py" -Value "    'carma/include',"
-          Add-Content -Path "setup.py" -Value "    '/usr/include',"
-          Add-Content -Path "setup.py" -Value "    'src',"
-          Add-Content -Path "setup.py" -Value "    np.get_include(),"
-          Add-Content -Path "setup.py" -Value "]"
-          Add-Content -Path "setup.py" -Value ""
-          Add-Content -Path "setup.py" -Value "armadillo_include = os.environ.get('ARMADILLO_INCLUDE_DIR', '').strip()"
-          Add-Content -Path "setup.py" -Value "if armadillo_include:"
-          Add-Content -Path "setup.py" -Value "    include_dirs.append(armadillo_include)"
-          Add-Content -Path "setup.py" -Value ""
-          Add-Content -Path "setup.py" -Value "# Empty libraries for Windows"
-          Add-Content -Path "setup.py" -Value "libraries = []"
-          Add-Content -Path "setup.py" -Value "library_dirs = []"
-          Add-Content -Path "setup.py" -Value ""
-          Add-Content -Path "setup.py" -Value "# Define macros to disable BLAS/LAPACK"
-          Add-Content -Path "setup.py" -Value "define_macros = ["
-          Add-Content -Path "setup.py" -Value "    ('ARMA_DONT_USE_LAPACK', '1'),"
-          Add-Content -Path "setup.py" -Value "    ('ARMA_DONT_USE_BLAS', '1'),"
-          Add-Content -Path "setup.py" -Value "    ('ARMA_DONT_USE_WRAPPER', '1'),"
-          Add-Content -Path "setup.py" -Value "    ('ARMA_DONT_USE_CXX11_MUTEX', '1'),"
-          Add-Content -Path "setup.py" -Value "    ('ARMA_USE_EXTERN_CXX11_RNG', '1'),"
-          Add-Content -Path "setup.py" -Value "]"
-          Add-Content -Path "setup.py" -Value ""
-          Add-Content -Path "setup.py" -Value "class BuildExt(build_ext):"
-          Add-Content -Path "setup.py" -Value "    def build_extensions(self):"
-          Add-Content -Path "setup.py" -Value "        ct = self.compiler.compiler_type"
-          Add-Content -Path "setup.py" -Value "        opts = ['/EHsc', '/std:c++14']"
-          Add-Content -Path "setup.py" -Value "        if ct == 'msvc':"
-          Add-Content -Path "setup.py" -Value "            # Add extra compiler flags for MSVC"
-          Add-Content -Path "setup.py" -Value "            opts.extend(['/DARMA_DONT_USE_LAPACK', '/DARMA_DONT_USE_BLAS', '/DARMA_DONT_USE_WRAPPER', '/DARMA_USE_EXTERN_CXX11_RNG'])"
-          Add-Content -Path "setup.py" -Value "        for ext in self.extensions:"
-          Add-Content -Path "setup.py" -Value "            ext.extra_compile_args = opts"
-          Add-Content -Path "setup.py" -Value "        build_ext.build_extensions(self)"
-          Add-Content -Path "setup.py" -Value ""
-          Add-Content -Path "setup.py" -Value "setup("
-          Add-Content -Path "setup.py" -Value "    ext_modules=["
-          Add-Content -Path "setup.py" -Value "        Extension("
-          Add-Content -Path "setup.py" -Value "            'tlars.tlars_cpp',"
-          Add-Content -Path "setup.py" -Value "            ['src/tlars_cpp.cpp', 'src/tlars_cpp_pybind.cpp'],"
-          Add-Content -Path "setup.py" -Value "            include_dirs=include_dirs,"
-          Add-Content -Path "setup.py" -Value "            library_dirs=library_dirs,"
-          Add-Content -Path "setup.py" -Value "            libraries=libraries,"
-          Add-Content -Path "setup.py" -Value "            define_macros=define_macros,"
-          Add-Content -Path "setup.py" -Value "            language='c++'"
-          Add-Content -Path "setup.py" -Value "        ),"
-          Add-Content -Path "setup.py" -Value "    ],"
-          Add-Content -Path "setup.py" -Value "    cmdclass={'build_ext': BuildExt},"
-          Add-Content -Path "setup.py" -Value ")"
-          
-          # Verify the content
-          echo "Checking setup.py:"
-          Get-Content "setup.py" | Select-String -Pattern "ARMA_DONT_USE"
-      
       - name: Debug environment (macOS)
         if: matrix.os == 'macos-latest'
         run: |
@@ -224,18 +153,6 @@ jobs:
           CIBW_ARCHS_WINDOWS: "AMD64"
         run: |
           python -m cibuildwheel --output-dir dist
-      
-      - name: Restore original setup.py (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          # Restore the original setup.py after building wheels
-          if (Test-Path -Path "setup.py.bak") {
-              Move-Item -Path "setup.py.bak" -Destination "setup.py" -Force
-              echo "Restored original setup.py"
-          } else {
-              echo "Warning: No backup found to restore"
-          }
       
       - name: Build source distribution
         if: matrix.os == 'ubuntu-latest'
