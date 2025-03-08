@@ -15,7 +15,7 @@ for k, v in os.environ.items():
     if 'ARM' in k.upper() or 'INCLUDE' in k.upper() or 'LIB' in k.upper():
         print(f"  {k}: {v}")
 
-__version__ = '0.5.0'
+__version__ = '1.0.0'
 
 # Detect platform
 is_windows = sys.platform.startswith('win')
@@ -178,16 +178,16 @@ setup(
     version=__version__,
     author='Arnau Vilella',
     author_email='avp@connect.ust.hk',
-    url='https://github.com/author/tlars-python',
+    url='https://github.com/ArnauVilella/tlars-python',
     description='Python port of the tlars R package by Jasin Machkour',
     long_description='',
     ext_modules=ext_modules,
     install_requires=['pybind11>=2.6.0', 'numpy>=1.19.0', 'matplotlib>=3.3.0'],
-    setup_requires=['pybind11>=2.6.0', 'numpy>=1.19.0'],
+    setup_requires=['pybind11>=2.6.0', 'numpy>=1.19.0', 'matplotlib>=3.3.0'],
     cmdclass={'build_ext': BuildExt},
     packages=['tlars'],
     zip_safe=False,
-    python_requires='>=3.6',
+    python_requires='>=3.8',
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
