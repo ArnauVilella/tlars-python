@@ -43,35 +43,36 @@ else:
         include_dirs.append(os.path.join('C:', os.sep, 'armadillo', 'include'))
         print(f"Using hardcoded Windows Armadillo include path")
 
-library_dirs = []
-if platform.system() == 'Windows':
-    # Check if we should skip armadillo linking
-    skip_linking = os.environ.get('SKIP_ARMADILLO_LINKING', '').strip() == '1'
-    if not skip_linking:
-        # Ensure proper path format with backslash after C:
-        lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')
-        library_dirs.append(lib_path)
-        print(f"Using hardcoded Windows Armadillo lib path: {lib_path}")
-    else:
-        print("Skipping Armadillo library directory setup due to SKIP_ARMADILLO_LINKING=1")
-
+# Check for Windows platform and skip Armadillo linking if requested
 libraries = []
-if platform.system() == 'Windows':
-    skip_linking = os.environ.get('SKIP_ARMADILLO_LINKING', '').strip() == '1'
-    if not skip_linking:
-        libraries.append('armadillo')
-        print("Adding armadillo to libraries list")
-    else:
-        print("Skipping armadillo linking as requested by SKIP_ARMADILLO_LINKING=1")
+library_dirs = []
+
+# Check if we should skip armadillo linking on Windows
+skip_linking = platform.system() == 'Windows' and os.environ.get('SKIP_ARMADILLO_LINKING', '').strip() == '1'
+
+if platform.system() == 'Windows' and not skip_linking:
+    # Only add armadillo to libraries if not skipping
+    libraries.append('armadillo')
+    
+    # Ensure proper path format with backslash after C:
+    lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')
+    library_dirs.append(lib_path)
+    print(f"Using hardcoded Windows Armadillo lib path: {lib_path}")
+elif skip_linking:
+    print("Skipping Armadillo linking and library setup due to SKIP_ARMADILLO_LINKING=1")
 
 # Define macros to disable BLAS/LAPACK
 define_macros = [
     ("ARMA_DONT_USE_LAPACK", "1"),
     ("ARMA_DONT_USE_BLAS", "1"),
     ("ARMA_DONT_USE_WRAPPER", "1"),
-    ("ARMA_DONT_USE_STD_MUTEX", "1"),  # Updated from CXX11_MUTEX which is deprecated
+    # Switch to STD_MUTEX and remove deprecated CXX11_MUTEX
+    ("ARMA_DONT_USE_STD_MUTEX", "1"),  # Use this instead of CXX11_MUTEX which is deprecated
     ("ARMA_USE_EXTERN_CXX11_RNG", "1"),
 ]
+
+# Print the macros for debugging
+print(f"Define macros: {define_macros}")
 
 # Add platform-specific environment-controlled macros
 if platform.system() == 'Windows':
@@ -79,6 +80,9 @@ if platform.system() == 'Windows':
                     'ARMA_DONT_USE_WRAPPER', 'ARMA_USE_EXTERN_CXX11_RNG']:
         if os.environ.get(env_var, '').strip() == '1':
             print(f"Ensuring macro {env_var}=1 is defined based on environment variable")
+
+print(f"Final libraries list: {libraries}")
+print(f"Final library_dirs list: {library_dirs}")
 
 # Define the extension module
 ext_modules = [
@@ -154,60 +158,54 @@ class BuildExt(build_ext):
             if os.environ.get('ARMA_USE_EXTERN_CXX11_RNG', '').strip() == '1':
                 opts.append('/DARMA_USE_EXTERN_CXX11_RNG')
             
+            # Add STD_MUTEX flag
+            opts.append('/DARMA_DONT_USE_STD_MUTEX')
+            
             # Debugging information for Windows
             print(f"Compiler type: {ct}")
             print(f"Compiler flags: {opts}")
             print(f"Link flags: {link_opts}")
-            
-            # Add explicit include and library directories for Armadillo on Windows
-            for ext in self.extensions:
-                # Make sure NumPy include dir is in the includes
-                numpy_include = np.get_include()
-                if numpy_include not in ext.include_dirs:
-                    ext.include_dirs.append(numpy_include)
-                    print(f"Added NumPy include directory: {numpy_include}")
-                
-                if 'ARMADILLO_INCLUDE_DIR' in os.environ:
-                    armadillo_include = os.environ['ARMADILLO_INCLUDE_DIR'].strip()  # Strip any trailing spaces
-                    print(f"Using ARMADILLO_INCLUDE_DIR from environment: {armadillo_include}")
-                    if armadillo_include not in ext.include_dirs:
-                        ext.include_dirs.append(armadillo_include)
-                else:
-                    print("ARMADILLO_INCLUDE_DIR not found in environment, using default")
-                    armadillo_path = os.path.join('C:', os.sep, 'armadillo', 'include')
-                    if armadillo_path not in ext.include_dirs:
-                        ext.include_dirs.append(armadillo_path)
-                
-                if 'ARMADILLO_LIBRARY' in os.environ:
-                    lib_dir = os.path.dirname(os.environ['ARMADILLO_LIBRARY'])
-                    print(f"Using lib directory from ARMADILLO_LIBRARY: {lib_dir}")
-                    if lib_dir not in ext.library_dirs:
-                        ext.library_dirs.append(lib_dir)
-                else:
-                    print("ARMADILLO_LIBRARY not found in environment, using default")
-                    lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')
-                    if lib_path not in ext.library_dirs:
-                        ext.library_dirs.append(lib_path)
-                
-                if 'armadillo' not in ext.libraries:
-                    ext.libraries.append('armadillo')
-                
-                # Clean up trailing spaces in include_dirs
-                ext.include_dirs = [inc_dir.strip() if isinstance(inc_dir, str) else inc_dir 
-                                    for inc_dir in ext.include_dirs]
-                
-                # Fix path formatting in library_dirs (ensure proper path separator)
-                ext.library_dirs = [lib_dir.replace('C:/', 'C:\\').replace('C:', 'C:\\') 
-                                    if isinstance(lib_dir, str) and lib_dir.startswith('C:') 
-                                    else lib_dir for lib_dir in ext.library_dirs]
-                
-                print(f"Extension include_dirs: {ext.include_dirs}")
-                print(f"Extension library_dirs: {ext.library_dirs}")
-                print(f"Extension libraries: {ext.libraries}")
-
+        
+            # Special handling for Windows when SKIP_ARMADILLO_LINKING=1
+            if os.environ.get('SKIP_ARMADILLO_LINKING', '').strip() == '1':
+                print("Windows build with SKIP_ARMADILLO_LINKING=1, removing armadillo from libraries")
+                # Force remove armadillo from all extensions
+                for ext in self.extensions:
+                    if 'armadillo' in ext.libraries:
+                        ext.libraries.remove('armadillo')
+                        print(f"Removed armadillo from {ext.name} libraries: {ext.libraries}")
+        
         for ext in self.extensions:
-            ext.extra_compile_args += opts
-            ext.extra_link_args += link_opts
+            ext.extra_compile_args = opts.copy()
+            ext.extra_link_args = link_opts.copy()
+            
+            # Fix the define_macros to use STD_MUTEX instead of CXX11_MUTEX
+            fixed_macros = []
+            has_std_mutex = False
+            for name, value in ext.define_macros:
+                if name == "ARMA_DONT_USE_CXX11_MUTEX":
+                    print("Replacing deprecated ARMA_DONT_USE_CXX11_MUTEX with ARMA_DONT_USE_STD_MUTEX")
+                    fixed_macros.append(("ARMA_DONT_USE_STD_MUTEX", value))
+                    has_std_mutex = True
+                else:
+                    fixed_macros.append((name, value))
+                    if name == "ARMA_DONT_USE_STD_MUTEX":
+                        has_std_mutex = True
+            
+            # Add STD_MUTEX if not present
+            if not has_std_mutex:
+                fixed_macros.append(("ARMA_DONT_USE_STD_MUTEX", "1"))
+                print("Added missing ARMA_DONT_USE_STD_MUTEX macro")
+            
+            ext.define_macros = fixed_macros
+            
+            # Print extension information for Windows
+            if ct == 'msvc':
+                print(f"Extension {ext.name} include_dirs: {ext.include_dirs}")
+                print(f"Extension {ext.name} library_dirs: {ext.library_dirs}")
+                print(f"Extension {ext.name} libraries: {ext.libraries}")
+                print(f"Extension {ext.name} define_macros: {ext.define_macros}")
+                
         build_ext.build_extensions(self)
 
 setup(
