@@ -14,259 +14,255 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
-    
-    - name: Install dependencies (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine wheel setuptools numpy pybind11 cibuildwheel
-        # Install Armadillo on Ubuntu
-        sudo apt-get update
-        sudo apt-get install -y libarmadillo-dev
-    
-    - name: Install dependencies (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine wheel setuptools numpy pybind11 cibuildwheel
-        # Install Armadillo on macOS
-        brew install armadillo
-        # Find where Armadillo is installed
-        echo "Armadillo location:"
-        find /usr/local /opt/homebrew -name "armadillo" -type d 2>/dev/null || echo "Not found in standard locations"
-        
-        # Export environment variables for the build process
-        echo "CPLUS_INCLUDE_PATH=$(brew --prefix armadillo)/include:$CPLUS_INCLUDE_PATH" >> $GITHUB_ENV
-        echo "LIBRARY_PATH=$(brew --prefix armadillo)/lib:$LIBRARY_PATH" >> $GITHUB_ENV
-        echo "DYLD_LIBRARY_PATH=$(brew --prefix armadillo)/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
-    
-    - name: Install dependencies (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine wheel setuptools numpy pybind11 cibuildwheel
-        
-        # Create directory structure for Armadillo manually
-        $armaDir = "C:/armadillo"
-        $armaIncludeDir = "$armaDir/include"
-        
-        mkdir -Force $armaDir
-        mkdir -Force $armaIncludeDir
-        
-        # Clone Armadillo repository
-        git clone --depth 1 https://gitlab.com/conradsnicta/armadillo-code.git "$env:TEMP/arma-clone"
-        
-        # Create Armadillo config file with LAPACK/BLAS disabled
-        $configH = @"
-// Armadillo configuration for Windows without BLAS/LAPACK
-#define ARMA_DONT_USE_LAPACK
-#define ARMA_DONT_USE_BLAS
-#define ARMA_DONT_USE_WRAPPER
-#define ARMA_DONT_USE_CXX11_MUTEX
-#define ARMA_USE_EXTERN_CXX11_RNG
-"@
-        Set-Content -Path "$armaIncludeDir/config.hpp" -Value $configH
-        
-        # Copy include files to the correct location
-        Copy-Item -Path "$env:TEMP/arma-clone/include/*" -Destination $armaIncludeDir -Recurse -Force
-        
-        # Set environment variables with proper path format
-        echo "ARMADILLO_INCLUDE_DIR=C:/armadillo/include" >> $env:GITHUB_ENV
-        echo "ARMA_USE_EXTERN_CXX11_RNG=1" >> $env:GITHUB_ENV
-        
-        # Setting Windows-specific flags
-        echo "PLATFORM=Windows" >> $env:GITHUB_ENV
-        echo "SKIP_ARMADILLO_LINKING=1" >> $env:GITHUB_ENV
-        echo "ARMA_DONT_USE_WRAPPER=1" >> $env:GITHUB_ENV
-        echo "ARMA_DONT_USE_BLAS=1" >> $env:GITHUB_ENV
-        echo "ARMA_DONT_USE_LAPACK=1" >> $env:GITHUB_ENV
-      shell: pwsh
-    
-    - name: Create Windows setup.py
-      if: matrix.os == 'windows-latest'
-      run: |
-        # Create a file for creating the setup.py
-        echo 'from setuptools import setup, Extension' > create_setup.py
-        echo 'from setuptools.command.build_ext import build_ext' >> create_setup.py
-        echo 'import sys, os, numpy as np' >> create_setup.py
-        echo '' >> create_setup.py
-        echo 'content = """' >> create_setup.py
-        echo 'from setuptools import setup, Extension' >> create_setup.py
-        echo 'from setuptools.command.build_ext import build_ext' >> create_setup.py
-        echo 'import sys, os, numpy as np' >> create_setup.py
-        echo '' >> create_setup.py
-        echo '__version__ = "0.0.1"' >> create_setup.py
-        echo '' >> create_setup.py
-        echo 'include_dirs = [' >> create_setup.py
-        echo '    "pybind11/include",' >> create_setup.py
-        echo '    "carma/include",' >> create_setup.py
-        echo '    "/usr/include",' >> create_setup.py
-        echo '    "src",' >> create_setup.py
-        echo '    np.get_include(),' >> create_setup.py
-        echo ']' >> create_setup.py
-        echo '' >> create_setup.py
-        echo 'armadillo_include = os.environ.get("ARMADILLO_INCLUDE_DIR", "").strip()' >> create_setup.py
-        echo 'if armadillo_include:' >> create_setup.py
-        echo '    include_dirs.append(armadillo_include)' >> create_setup.py
-        echo '' >> create_setup.py
-        echo '# Empty libraries for Windows' >> create_setup.py
-        echo 'libraries = []' >> create_setup.py
-        echo 'library_dirs = []' >> create_setup.py
-        echo '' >> create_setup.py
-        echo '# Define macros to disable BLAS/LAPACK' >> create_setup.py
-        echo 'define_macros = [' >> create_setup.py
-        echo '    ("ARMA_DONT_USE_LAPACK", "1"),' >> create_setup.py
-        echo '    ("ARMA_DONT_USE_BLAS", "1"),' >> create_setup.py
-        echo '    ("ARMA_DONT_USE_WRAPPER", "1"),' >> create_setup.py
-        echo '    ("ARMA_DONT_USE_CXX11_MUTEX", "1"),' >> create_setup.py
-        echo '    ("ARMA_USE_EXTERN_CXX11_RNG", "1"),' >> create_setup.py
-        echo ']' >> create_setup.py
-        echo '' >> create_setup.py
-        echo 'class BuildExt(build_ext):' >> create_setup.py
-        echo '    def build_extensions(self):' >> create_setup.py
-        echo '        ct = self.compiler.compiler_type' >> create_setup.py
-        echo '        opts = ["/EHsc", "/std:c++14"]' >> create_setup.py
-        echo '        if ct == "msvc":' >> create_setup.py
-        echo '            # Add extra compiler flags for MSVC' >> create_setup.py
-        echo '            opts.extend(["/DARMA_DONT_USE_LAPACK", "/DARMA_DONT_USE_BLAS", "/DARMA_DONT_USE_WRAPPER", "/DARMA_USE_EXTERN_CXX11_RNG"])' >> create_setup.py
-        echo '        for ext in self.extensions:' >> create_setup.py
-        echo '            ext.extra_compile_args = opts' >> create_setup.py
-        echo '        build_ext.build_extensions(self)' >> create_setup.py
-        echo '' >> create_setup.py
-        echo 'setup(' >> create_setup.py
-        echo '    ext_modules=[' >> create_setup.py
-        echo '        Extension(' >> create_setup.py
-        echo '            "tlars.tlars_cpp",' >> create_setup.py
-        echo '            ["src/tlars_cpp.cpp", "src/tlars_cpp_pybind.cpp"],' >> create_setup.py
-        echo '            include_dirs=include_dirs,' >> create_setup.py
-        echo '            library_dirs=library_dirs,' >> create_setup.py
-        echo '            libraries=libraries,' >> create_setup.py
-        echo '            define_macros=define_macros,' >> create_setup.py
-        echo '            language="c++"' >> create_setup.py
-        echo '        ),' >> create_setup.py
-        echo '    ],' >> create_setup.py
-        echo '    cmdclass={"build_ext": BuildExt},' >> create_setup.py
-        echo ')' >> create_setup.py
-        echo '"""' >> create_setup.py
-        echo '' >> create_setup.py
-        echo '# Backup the original setup.py' >> create_setup.py
-        echo 'import shutil' >> create_setup.py
-        echo 'shutil.copy("setup.py", "setup.py.bak")' >> create_setup.py
-        echo '' >> create_setup.py
-        echo '# Write the new setup.py' >> create_setup.py
-        echo 'with open("setup.py", "w") as f:' >> create_setup.py
-        echo '    f.write(content)' >> create_setup.py
-        echo '' >> create_setup.py
-        echo 'print("Created Windows-specific setup.py")' >> create_setup.py
-        
-        # Run the Python script to create setup.py
-        python create_setup.py
-        
-        # Verify the content
-        echo "Checking setup.py:"
-        Get-Content "setup.py" | Select-String -Pattern "ARMA_DONT_USE"
-      shell: pwsh
-    
-    - name: Debug environment (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        echo "CPLUS_INCLUDE_PATH: $CPLUS_INCLUDE_PATH"
-        echo "LIBRARY_PATH: $LIBRARY_PATH"
-        echo "Checking Armadillo installation:"
-        ls -la $(brew --prefix armadillo)/include || echo "Cannot list include dir"
-        ls -la $(brew --prefix armadillo)/lib || echo "Cannot list lib dir"
-    
-    - name: Debug environment (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        echo "Checking environment variables:"
-        echo "ARMADILLO_INCLUDE_DIR: $env:ARMADILLO_INCLUDE_DIR" 
-        echo "ARMA_USE_EXTERN_CXX11_RNG: $env:ARMA_USE_EXTERN_CXX11_RNG"
-        echo "PLATFORM: $env:PLATFORM"
-        echo "SKIP_ARMADILLO_LINKING: $env:SKIP_ARMADILLO_LINKING"
-        echo "ARMA_DONT_USE_WRAPPER: $env:ARMA_DONT_USE_WRAPPER"
-        
-        echo "Checking Armadillo installation:"
-        Get-ChildItem "C:/armadillo" -Recurse | Select-Object FullName
-        
-        echo "Checking if the armadillo header exists:"
-        if (Test-Path -Path "C:/armadillo/include/armadillo") {
-          Get-Content -Path "C:/armadillo/include/armadillo" -TotalCount 5
-        } else {
-          echo "armadillo header not found"
-        }
-        
-        echo "Checking config.hpp:"
-        if (Test-Path -Path "C:/armadillo/include/config.hpp") {
-          Get-Content -Path "C:/armadillo/include/config.hpp"
-        } else {
-          echo "config.hpp not found"
-        }
-      shell: pwsh
-    
-    - name: Build wheels (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      env:
-        CIBW_BEFORE_ALL_LINUX: "yum install -y armadillo-devel"
-        CIBW_ARCHS_LINUX: "x86_64"
-        CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
-        CIBW_SKIP: "*-musllinux*"
-      run: |
-        python -m cibuildwheel --output-dir dist
-    
-    - name: Build wheels (macOS)
-      if: matrix.os == 'macos-latest'
-      env:
-        CIBW_ARCHS_MACOS: "x86_64 arm64"
-        CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
-      run: |
-        python -m cibuildwheel --output-dir dist
-    
-    - name: Build wheels (Windows)
-      if: matrix.os == 'windows-latest'
-      env:
-        CIBW_ENVIRONMENT: "ARMADILLO_INCLUDE_DIR=C:/armadillo/include ARMA_USE_EXTERN_CXX11_RNG=1 PLATFORM=Windows SKIP_ARMADILLO_LINKING=1 ARMA_DONT_USE_WRAPPER=1 ARMA_DONT_USE_BLAS=1 ARMA_DONT_USE_LAPACK=1"
-        CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
-        CIBW_ARCHS_WINDOWS: "AMD64"
-      run: |
-        python -m cibuildwheel --output-dir dist
-    
-    - name: Restore original setup.py (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        # Restore the original setup.py after building wheels
-        if (Test-Path -Path "setup.py.bak") {
-            Move-Item -Path "setup.py.bak" -Destination "setup.py" -Force
-            echo "Restored original setup.py"
-        } else {
-            echo "Warning: No backup found to restore"
-        }
-      shell: pwsh
-    
-    - name: Build source distribution
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        python -m build --sdist
-    
-    - name: Check package
-      run: |
-        python -m twine check dist/*
-    
-    - name: Store artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist-${{ matrix.os }}
-        path: dist/*
-        retention-days: 5
-        if-no-files-found: error
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine wheel setuptools numpy pybind11 cibuildwheel
+          # Install Armadillo on Ubuntu
+          sudo apt-get update
+          sudo apt-get install -y libarmadillo-dev
+      
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine wheel setuptools numpy pybind11 cibuildwheel
+          # Install Armadillo on macOS
+          brew install armadillo
+          # Find where Armadillo is installed
+          echo "Armadillo location:"
+          find /usr/local /opt/homebrew -name "armadillo" -type d 2>/dev/null || echo "Not found in standard locations"
+          
+          # Export environment variables for the build process
+          echo "CPLUS_INCLUDE_PATH=$(brew --prefix armadillo)/include:$CPLUS_INCLUDE_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$(brew --prefix armadillo)/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "DYLD_LIBRARY_PATH=$(brew --prefix armadillo)/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
+      
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine wheel setuptools numpy pybind11 cibuildwheel
+          
+          # Create directory structure for Armadillo manually
+          $armaDir = "C:/armadillo"
+          $armaIncludeDir = "$armaDir/include"
+          
+          mkdir -Force $armaDir
+          mkdir -Force $armaIncludeDir
+          
+          # Clone Armadillo repository
+          git clone --depth 1 https://gitlab.com/conradsnicta/armadillo-code.git "$env:TEMP/arma-clone"
+          
+          # Write config file contents line by line
+          $configLines = @(
+              "// Armadillo configuration for Windows without BLAS/LAPACK",
+              "#define ARMA_DONT_USE_LAPACK",
+              "#define ARMA_DONT_USE_BLAS",
+              "#define ARMA_DONT_USE_WRAPPER",
+              "#define ARMA_DONT_USE_CXX11_MUTEX",
+              "#define ARMA_USE_EXTERN_CXX11_RNG"
+          )
+          $configLines | Out-File -FilePath "$armaIncludeDir/config.hpp" -Encoding ascii
+          
+          # Copy include files to the correct location
+          Copy-Item -Path "$env:TEMP/arma-clone/include/*" -Destination $armaIncludeDir -Recurse -Force
+          
+          # Set environment variables with proper path format
+          echo "ARMADILLO_INCLUDE_DIR=C:/armadillo/include" >> $env:GITHUB_ENV
+          echo "ARMA_USE_EXTERN_CXX11_RNG=1" >> $env:GITHUB_ENV
+          
+          # Setting Windows-specific flags
+          echo "PLATFORM=Windows" >> $env:GITHUB_ENV
+          echo "SKIP_ARMADILLO_LINKING=1" >> $env:GITHUB_ENV
+          echo "ARMA_DONT_USE_WRAPPER=1" >> $env:GITHUB_ENV
+          echo "ARMA_DONT_USE_BLAS=1" >> $env:GITHUB_ENV
+          echo "ARMA_DONT_USE_LAPACK=1" >> $env:GITHUB_ENV
+      
+      - name: Create Windows setup.py
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          # Create the Windows-specific setup.py directly with Python
+          python -c "
+          import sys, os, shutil
+
+          # Backup original setup.py
+          shutil.copy('setup.py', 'setup.py.bak')
+
+          setup_content = '''
+          from setuptools import setup, Extension
+          from setuptools.command.build_ext import build_ext
+          import sys, os, numpy as np
+
+          __version__ = \"0.0.1\"
+
+          include_dirs = [
+              \"pybind11/include\",
+              \"carma/include\",
+              \"/usr/include\",
+              \"src\",
+              np.get_include(),
+          ]
+
+          armadillo_include = os.environ.get(\"ARMADILLO_INCLUDE_DIR\", \"\").strip()
+          if armadillo_include:
+              include_dirs.append(armadillo_include)
+
+          # Empty libraries for Windows
+          libraries = []
+          library_dirs = []
+
+          # Define macros to disable BLAS/LAPACK
+          define_macros = [
+              (\"ARMA_DONT_USE_LAPACK\", \"1\"),
+              (\"ARMA_DONT_USE_BLAS\", \"1\"),
+              (\"ARMA_DONT_USE_WRAPPER\", \"1\"),
+              (\"ARMA_DONT_USE_CXX11_MUTEX\", \"1\"),
+              (\"ARMA_USE_EXTERN_CXX11_RNG\", \"1\"),
+          ]
+
+          class BuildExt(build_ext):
+              def build_extensions(self):
+                  ct = self.compiler.compiler_type
+                  opts = [\"/EHsc\", \"/std:c++14\"]
+                  if ct == \"msvc\":
+                      # Add extra compiler flags for MSVC
+                      opts.extend([\"/DARMA_DONT_USE_LAPACK\", \"/DARMA_DONT_USE_BLAS\", \"/DARMA_DONT_USE_WRAPPER\", \"/DARMA_USE_EXTERN_CXX11_RNG\"])
+                  for ext in self.extensions:
+                      ext.extra_compile_args = opts
+                  build_ext.build_extensions(self)
+
+          setup(
+              ext_modules=[
+                  Extension(
+                      \"tlars.tlars_cpp\",
+                      [\"src/tlars_cpp.cpp\", \"src/tlars_cpp_pybind.cpp\"],
+                      include_dirs=include_dirs,
+                      library_dirs=library_dirs,
+                      libraries=libraries,
+                      define_macros=define_macros,
+                      language=\"c++\"
+                  ),
+              ],
+              cmdclass={\"build_ext\": BuildExt},
+          )
+          '''
+
+          # Write to setup.py
+          with open('setup.py', 'w') as f:
+              f.write(setup_content)
+
+          print('Created Windows-specific setup.py')
+          "
+          
+          # Verify the content
+          echo "Checking setup.py:"
+          Get-Content "setup.py" | Select-String -Pattern "ARMA_DONT_USE"
+      
+      - name: Debug environment (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "CPLUS_INCLUDE_PATH: $CPLUS_INCLUDE_PATH"
+          echo "LIBRARY_PATH: $LIBRARY_PATH"
+          echo "Checking Armadillo installation:"
+          ls -la $(brew --prefix armadillo)/include || echo "Cannot list include dir"
+          ls -la $(brew --prefix armadillo)/lib || echo "Cannot list lib dir"
+      
+      - name: Debug environment (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          echo "Checking environment variables:"
+          echo "ARMADILLO_INCLUDE_DIR: $env:ARMADILLO_INCLUDE_DIR" 
+          echo "ARMA_USE_EXTERN_CXX11_RNG: $env:ARMA_USE_EXTERN_CXX11_RNG"
+          echo "PLATFORM: $env:PLATFORM"
+          echo "SKIP_ARMADILLO_LINKING: $env:SKIP_ARMADILLO_LINKING"
+          echo "ARMA_DONT_USE_WRAPPER: $env:ARMA_DONT_USE_WRAPPER"
+          
+          echo "Checking Armadillo installation:"
+          Get-ChildItem "C:/armadillo" -Recurse | Select-Object FullName
+          
+          echo "Checking if the armadillo header exists:"
+          if (Test-Path -Path "C:/armadillo/include/armadillo") {
+            Get-Content -Path "C:/armadillo/include/armadillo" -TotalCount 5
+          } else {
+            echo "armadillo header not found"
+          }
+          
+          echo "Checking config.hpp:"
+          if (Test-Path -Path "C:/armadillo/include/config.hpp") {
+            Get-Content -Path "C:/armadillo/include/config.hpp"
+          } else {
+            echo "config.hpp not found"
+          }
+      
+      - name: Build wheels (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          CIBW_BEFORE_ALL_LINUX: "yum install -y armadillo-devel"
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
+          CIBW_SKIP: "*-musllinux*"
+        run: |
+          python -m cibuildwheel --output-dir dist
+      
+      - name: Build wheels (macOS)
+        if: matrix.os == 'macos-latest'
+        env:
+          CIBW_ARCHS_MACOS: "x86_64 arm64"
+          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
+        run: |
+          python -m cibuildwheel --output-dir dist
+      
+      - name: Build wheels (Windows)
+        if: matrix.os == 'windows-latest'
+        env:
+          CIBW_ENVIRONMENT: "ARMADILLO_INCLUDE_DIR=C:/armadillo/include ARMA_USE_EXTERN_CXX11_RNG=1 PLATFORM=Windows SKIP_ARMADILLO_LINKING=1 ARMA_DONT_USE_WRAPPER=1 ARMA_DONT_USE_BLAS=1 ARMA_DONT_USE_LAPACK=1"
+          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
+          CIBW_ARCHS_WINDOWS: "AMD64"
+        run: |
+          python -m cibuildwheel --output-dir dist
+      
+      - name: Restore original setup.py (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          # Restore the original setup.py after building wheels
+          if (Test-Path -Path "setup.py.bak") {
+              Move-Item -Path "setup.py.bak" -Destination "setup.py" -Force
+              echo "Restored original setup.py"
+          } else {
+              echo "Warning: No backup found to restore"
+          }
+      
+      - name: Build source distribution
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m build --sdist
+      
+      - name: Check package
+        run: |
+          python -m twine check dist/*
+      
+      - name: Store artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: dist/*
+          retention-days: 5
+          if-no-files-found: error
 
   publish:
     name: Publish to PyPI
@@ -275,18 +271,18 @@ jobs:
     if: github.event_name == 'release'
     
     steps:
-    - uses: actions/download-artifact@v4
-      with:
-        pattern: dist-*
-        path: dist/
-        merge-multiple: true
-    
-    - name: List artifacts
-      run: find dist -type f | sort
-    
-    - name: Publish package to PyPI
-      uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
-        packages_dir: dist/
-        skip_existing: true 
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist/
+          merge-multiple: true
+      
+      - name: List artifacts
+        run: find dist -type f | sort
+      
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages_dir: dist/
+          skip_existing: true 
