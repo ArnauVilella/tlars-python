@@ -64,6 +64,17 @@ jobs:
         # Clone Armadillo repository
         git clone --depth 1 https://gitlab.com/conradsnicta/armadillo-code.git "$env:TEMP/arma-clone"
         
+        # Create Armadillo config file with LAPACK/BLAS disabled
+        $configH = @"
+// Armadillo configuration for Windows without BLAS/LAPACK
+#define ARMA_DONT_USE_LAPACK
+#define ARMA_DONT_USE_BLAS
+#define ARMA_DONT_USE_WRAPPER
+#define ARMA_DONT_USE_CXX11_MUTEX
+#define ARMA_USE_EXTERN_CXX11_RNG
+"@
+        Set-Content -Path "$armaIncludeDir/config.hpp" -Value $configH
+        
         # Copy include files to the correct location
         Copy-Item -Path "$env:TEMP/arma-clone/include/*" -Destination $armaIncludeDir -Recurse -Force
         
@@ -110,10 +121,22 @@ jobs:
         echo 'libraries = []' >> create_setup.py
         echo 'library_dirs = []' >> create_setup.py
         echo '' >> create_setup.py
+        echo '# Define macros to disable BLAS/LAPACK' >> create_setup.py
+        echo 'define_macros = [' >> create_setup.py
+        echo '    ("ARMA_DONT_USE_LAPACK", "1"),' >> create_setup.py
+        echo '    ("ARMA_DONT_USE_BLAS", "1"),' >> create_setup.py
+        echo '    ("ARMA_DONT_USE_WRAPPER", "1"),' >> create_setup.py
+        echo '    ("ARMA_DONT_USE_CXX11_MUTEX", "1"),' >> create_setup.py
+        echo '    ("ARMA_USE_EXTERN_CXX11_RNG", "1"),' >> create_setup.py
+        echo ']' >> create_setup.py
+        echo '' >> create_setup.py
         echo 'class BuildExt(build_ext):' >> create_setup.py
         echo '    def build_extensions(self):' >> create_setup.py
         echo '        ct = self.compiler.compiler_type' >> create_setup.py
-        echo '        opts = ["/EHsc", "/std:c++14"] if ct == "msvc" else []' >> create_setup.py
+        echo '        opts = ["/EHsc", "/std:c++14"]' >> create_setup.py
+        echo '        if ct == "msvc":' >> create_setup.py
+        echo '            # Add extra compiler flags for MSVC' >> create_setup.py
+        echo '            opts.extend(["/DARMA_DONT_USE_LAPACK", "/DARMA_DONT_USE_BLAS", "/DARMA_DONT_USE_WRAPPER", "/DARMA_USE_EXTERN_CXX11_RNG"])' >> create_setup.py
         echo '        for ext in self.extensions:' >> create_setup.py
         echo '            ext.extra_compile_args = opts' >> create_setup.py
         echo '        build_ext.build_extensions(self)' >> create_setup.py
@@ -126,6 +149,7 @@ jobs:
         echo '            include_dirs=include_dirs,' >> create_setup.py
         echo '            library_dirs=library_dirs,' >> create_setup.py
         echo '            libraries=libraries,' >> create_setup.py
+        echo '            define_macros=define_macros,' >> create_setup.py
         echo '            language="c++"' >> create_setup.py
         echo '        ),' >> create_setup.py
         echo '    ],' >> create_setup.py
@@ -148,7 +172,7 @@ jobs:
         
         # Verify the content
         echo "Checking setup.py:"
-        Get-Content "setup.py" | Select-String -Pattern "libraries ="
+        Get-Content "setup.py" | Select-String -Pattern "ARMA_DONT_USE"
       shell: pwsh
     
     - name: Debug environment (macOS)
@@ -178,6 +202,13 @@ jobs:
           Get-Content -Path "C:/armadillo/include/armadillo" -TotalCount 5
         } else {
           echo "armadillo header not found"
+        }
+        
+        echo "Checking config.hpp:"
+        if (Test-Path -Path "C:/armadillo/include/config.hpp") {
+          Get-Content -Path "C:/armadillo/include/config.hpp"
+        } else {
+          echo "config.hpp not found"
         }
       shell: pwsh
     
