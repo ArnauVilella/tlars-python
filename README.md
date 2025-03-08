@@ -14,10 +14,23 @@ This Python package provides a port of the original R implementation by Jasin Ma
 
 - Python 3.6+
 - NumPy
+- Matplotlib (for visualization)
 - A C++ compiler (GCC, Clang, MSVC, etc.)
-- Armadillo C++ library
+- Armadillo C++ library (not required for pip installation on Windows)
 
-### Installing Armadillo
+### Installing with pip
+
+The package is available on PyPI for Windows, macOS, and Linux:
+
+```bash
+pip install tlars
+```
+
+This is the recommended installation method as it will automatically install pre-built wheels for your platform without requiring you to install Armadillo separately.
+
+### Installing Armadillo (for manual builds)
+
+If you want to build the package from source, you'll need to install the Armadillo C++ library first:
 
 #### Ubuntu/Debian
 ```bash
@@ -30,42 +43,35 @@ brew install armadillo
 ```
 
 #### Windows
-For Windows, you may need to download and build Armadillo from source: http://arma.sourceforge.net/download.html
+For Windows, the package will build without requiring a separate Armadillo installation when installing via pip. If building manually, the build process will handle the Armadillo headers automatically.
 
-### Installing the package
+### Building from source
 
-#### From PyPI
+To manually build the package from source:
+
 ```bash
-# First install the armadillo dependency
-# Ubuntu/Debian:
-sudo apt-get install libarmadillo-dev
-
-# macOS:
-# brew install armadillo
-
-# Then install the package
-pip install tlars
-```
-
-#### From source
-```bash
-# Install the armadillo dependency first
+# 1. Install the dependencies first
 # Ubuntu/Debian:
 sudo apt-get install libarmadillo-dev
 # macOS:
 # brew install armadillo
 
-# Clone the repository
+# Install Python dependencies
+pip install numpy matplotlib pybind11
+
+# 2. Clone the repository
 git clone https://github.com/ArnauVilella/tlars-python-2.git
 cd tlars-python-2
 
-# Initialize and update submodules
+# 3. Initialize and update submodules
 git submodule init
 git submodule update
 
-# Install the package
+# 4. Build and install the package
 pip install -e .
 ```
+
+For advanced users who want to customize the build process, you can modify the `setup.py` file to change compilation flags or include paths.
 
 ## Usage
 
