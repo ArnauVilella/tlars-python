@@ -4,6 +4,3 @@
 [submodule "carma"]
 	path = carma
 	url = https://github.com/RUrlus/carma.git
-[submodule "vcpkg"]
-	path = vcpkg
-	url = https://github.com/microsoft/vcpkg.git
