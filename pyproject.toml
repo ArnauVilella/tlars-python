@@ -7,7 +7,7 @@ name = "tlars"
 version = "0.6.0"
 description = "Python port of the tlars R package for Terminating-LARS (T-LARS) algorithm"
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.8"
 license = {text = "GPL-3.0"}
 authors = [
     {name = "Arnau Vilella", email = "avp@connect.ust.hk"}
