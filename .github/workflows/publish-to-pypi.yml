@@ -94,78 +94,68 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          # Create script file directly using echo commands
-          echo "import sys, os, shutil" > setup_modifier.py
-          echo "" >> setup_modifier.py
-          echo "# Backup original setup.py" >> setup_modifier.py
-          echo "shutil.copy('setup.py', 'setup.py.bak')" >> setup_modifier.py
-          echo "" >> setup_modifier.py
-          echo "# Windows-specific setup.py content" >> setup_modifier.py
-          echo "setup_content = '''from setuptools import setup, Extension" >> setup_modifier.py
-          echo "from setuptools.command.build_ext import build_ext" >> setup_modifier.py
-          echo "import sys, os, numpy as np" >> setup_modifier.py
-          echo "" >> setup_modifier.py
-          echo "__version__ = \"0.0.1\"" >> setup_modifier.py
-          echo "" >> setup_modifier.py
-          echo "include_dirs = [" >> setup_modifier.py
-          echo "    \"pybind11/include\"," >> setup_modifier.py
-          echo "    \"carma/include\"," >> setup_modifier.py
-          echo "    \"/usr/include\"," >> setup_modifier.py
-          echo "    \"src\"," >> setup_modifier.py
-          echo "    np.get_include()," >> setup_modifier.py
-          echo "]" >> setup_modifier.py
-          echo "" >> setup_modifier.py
-          echo "armadillo_include = os.environ.get(\"ARMADILLO_INCLUDE_DIR\", \"\").strip()" >> setup_modifier.py
-          echo "if armadillo_include:" >> setup_modifier.py
-          echo "    include_dirs.append(armadillo_include)" >> setup_modifier.py
-          echo "" >> setup_modifier.py
-          echo "# Empty libraries for Windows" >> setup_modifier.py
-          echo "libraries = []" >> setup_modifier.py
-          echo "library_dirs = []" >> setup_modifier.py
-          echo "" >> setup_modifier.py
-          echo "# Define macros to disable BLAS/LAPACK" >> setup_modifier.py
-          echo "define_macros = [" >> setup_modifier.py
-          echo "    (\"ARMA_DONT_USE_LAPACK\", \"1\")," >> setup_modifier.py
-          echo "    (\"ARMA_DONT_USE_BLAS\", \"1\")," >> setup_modifier.py
-          echo "    (\"ARMA_DONT_USE_WRAPPER\", \"1\")," >> setup_modifier.py
-          echo "    (\"ARMA_DONT_USE_CXX11_MUTEX\", \"1\")," >> setup_modifier.py
-          echo "    (\"ARMA_USE_EXTERN_CXX11_RNG\", \"1\")," >> setup_modifier.py
-          echo "]" >> setup_modifier.py
-          echo "" >> setup_modifier.py
-          echo "class BuildExt(build_ext):" >> setup_modifier.py
-          echo "    def build_extensions(self):" >> setup_modifier.py
-          echo "        ct = self.compiler.compiler_type" >> setup_modifier.py
-          echo "        opts = [\"/EHsc\", \"/std:c++14\"]" >> setup_modifier.py
-          echo "        if ct == \"msvc\":" >> setup_modifier.py
-          echo "            # Add extra compiler flags for MSVC" >> setup_modifier.py
-          echo "            opts.extend([\"/DARMA_DONT_USE_LAPACK\", \"/DARMA_DONT_USE_BLAS\", \"/DARMA_DONT_USE_WRAPPER\", \"/DARMA_USE_EXTERN_CXX11_RNG\"])" >> setup_modifier.py
-          echo "        for ext in self.extensions:" >> setup_modifier.py
-          echo "            ext.extra_compile_args = opts" >> setup_modifier.py
-          echo "        build_ext.build_extensions(self)" >> setup_modifier.py
-          echo "" >> setup_modifier.py
-          echo "setup(" >> setup_modifier.py
-          echo "    ext_modules=[" >> setup_modifier.py
-          echo "        Extension(" >> setup_modifier.py
-          echo "            \"tlars.tlars_cpp\"," >> setup_modifier.py
-          echo "            [\"src/tlars_cpp.cpp\", \"src/tlars_cpp_pybind.cpp\"]," >> setup_modifier.py
-          echo "            include_dirs=include_dirs," >> setup_modifier.py
-          echo "            library_dirs=library_dirs," >> setup_modifier.py
-          echo "            libraries=libraries," >> setup_modifier.py
-          echo "            define_macros=define_macros," >> setup_modifier.py
-          echo "            language=\"c++\"" >> setup_modifier.py
-          echo "        )," >> setup_modifier.py
-          echo "    ]," >> setup_modifier.py
-          echo "    cmdclass={\"build_ext\": BuildExt}," >> setup_modifier.py
-          echo ")'''" >> setup_modifier.py
-          echo "" >> setup_modifier.py
-          echo "# Write the content to setup.py" >> setup_modifier.py
-          echo "with open('setup.py', 'w') as f:" >> setup_modifier.py
-          echo "    f.write(setup_content)" >> setup_modifier.py
-          echo "" >> setup_modifier.py
-          echo "print('Created Windows-specific setup.py')" >> setup_modifier.py
+          # Backup original setup.py
+          Copy-Item -Path "setup.py" -Destination "setup.py.bak" -Force
           
-          # Execute the script
-          python setup_modifier.py
+          # Create setup.py file content line by line
+          Set-Content -Path "setup.py" -Value "import os"
+          Add-Content -Path "setup.py" -Value "import sys"
+          Add-Content -Path "setup.py" -Value "import numpy as np"
+          Add-Content -Path "setup.py" -Value "from setuptools import setup, Extension"
+          Add-Content -Path "setup.py" -Value "from setuptools.command.build_ext import build_ext"
+          Add-Content -Path "setup.py" -Value ""
+          Add-Content -Path "setup.py" -Value "__version__ = '0.0.1'"
+          Add-Content -Path "setup.py" -Value ""
+          Add-Content -Path "setup.py" -Value "include_dirs = ["
+          Add-Content -Path "setup.py" -Value "    'pybind11/include',"
+          Add-Content -Path "setup.py" -Value "    'carma/include',"
+          Add-Content -Path "setup.py" -Value "    '/usr/include',"
+          Add-Content -Path "setup.py" -Value "    'src',"
+          Add-Content -Path "setup.py" -Value "    np.get_include(),"
+          Add-Content -Path "setup.py" -Value "]"
+          Add-Content -Path "setup.py" -Value ""
+          Add-Content -Path "setup.py" -Value "armadillo_include = os.environ.get('ARMADILLO_INCLUDE_DIR', '').strip()"
+          Add-Content -Path "setup.py" -Value "if armadillo_include:"
+          Add-Content -Path "setup.py" -Value "    include_dirs.append(armadillo_include)"
+          Add-Content -Path "setup.py" -Value ""
+          Add-Content -Path "setup.py" -Value "# Empty libraries for Windows"
+          Add-Content -Path "setup.py" -Value "libraries = []"
+          Add-Content -Path "setup.py" -Value "library_dirs = []"
+          Add-Content -Path "setup.py" -Value ""
+          Add-Content -Path "setup.py" -Value "# Define macros to disable BLAS/LAPACK"
+          Add-Content -Path "setup.py" -Value "define_macros = ["
+          Add-Content -Path "setup.py" -Value "    ('ARMA_DONT_USE_LAPACK', '1'),"
+          Add-Content -Path "setup.py" -Value "    ('ARMA_DONT_USE_BLAS', '1'),"
+          Add-Content -Path "setup.py" -Value "    ('ARMA_DONT_USE_WRAPPER', '1'),"
+          Add-Content -Path "setup.py" -Value "    ('ARMA_DONT_USE_CXX11_MUTEX', '1'),"
+          Add-Content -Path "setup.py" -Value "    ('ARMA_USE_EXTERN_CXX11_RNG', '1'),"
+          Add-Content -Path "setup.py" -Value "]"
+          Add-Content -Path "setup.py" -Value ""
+          Add-Content -Path "setup.py" -Value "class BuildExt(build_ext):"
+          Add-Content -Path "setup.py" -Value "    def build_extensions(self):"
+          Add-Content -Path "setup.py" -Value "        ct = self.compiler.compiler_type"
+          Add-Content -Path "setup.py" -Value "        opts = ['/EHsc', '/std:c++14']"
+          Add-Content -Path "setup.py" -Value "        if ct == 'msvc':"
+          Add-Content -Path "setup.py" -Value "            # Add extra compiler flags for MSVC"
+          Add-Content -Path "setup.py" -Value "            opts.extend(['/DARMA_DONT_USE_LAPACK', '/DARMA_DONT_USE_BLAS', '/DARMA_DONT_USE_WRAPPER', '/DARMA_USE_EXTERN_CXX11_RNG'])"
+          Add-Content -Path "setup.py" -Value "        for ext in self.extensions:"
+          Add-Content -Path "setup.py" -Value "            ext.extra_compile_args = opts"
+          Add-Content -Path "setup.py" -Value "        build_ext.build_extensions(self)"
+          Add-Content -Path "setup.py" -Value ""
+          Add-Content -Path "setup.py" -Value "setup("
+          Add-Content -Path "setup.py" -Value "    ext_modules=["
+          Add-Content -Path "setup.py" -Value "        Extension("
+          Add-Content -Path "setup.py" -Value "            'tlars.tlars_cpp',"
+          Add-Content -Path "setup.py" -Value "            ['src/tlars_cpp.cpp', 'src/tlars_cpp_pybind.cpp'],"
+          Add-Content -Path "setup.py" -Value "            include_dirs=include_dirs,"
+          Add-Content -Path "setup.py" -Value "            library_dirs=library_dirs,"
+          Add-Content -Path "setup.py" -Value "            libraries=libraries,"
+          Add-Content -Path "setup.py" -Value "            define_macros=define_macros,"
+          Add-Content -Path "setup.py" -Value "            language='c++'"
+          Add-Content -Path "setup.py" -Value "        ),"
+          Add-Content -Path "setup.py" -Value "    ],"
+          Add-Content -Path "setup.py" -Value "    cmdclass={'build_ext': BuildExt},"
+          Add-Content -Path "setup.py" -Value ")"
           
           # Verify the content
           echo "Checking setup.py:"
