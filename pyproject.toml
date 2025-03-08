@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tlars"
-version = "1.0.0"
+version = "0.5.0"
 description = "Python port of the tlars R package for Terminating-LARS (T-LARS) algorithm"
 readme = "README.md"
 requires-python = ">=3.6"
