@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tlars import TLARS, generate_gaussian_data
 
-print("Testing TLARS package version 1.0.1")
+print("Testing TLARS package version 1.0.3")
 
 # Generate synthetic data
 print("Generating synthetic data...")
