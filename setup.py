@@ -62,6 +62,13 @@ ext_modules = [
         include_dirs=include_dirs,
         library_dirs=library_dirs,
         libraries=libraries,
+        define_macros=[
+            ("ARMA_DONT_USE_LAPACK", "1"),
+            ("ARMA_DONT_USE_BLAS", "1"),
+            ("ARMA_DONT_USE_WRAPPER", "1"),
+            ("ARMA_DONT_USE_CXX11_MUTEX", "1"),
+            ("ARMA_USE_EXTERN_CXX11_RNG", "1"),
+        ],
         language='c++'
     ),
 ]
