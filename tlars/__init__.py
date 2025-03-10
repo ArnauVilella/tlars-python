@@ -469,6 +469,3 @@ def generate_gaussian_data(n=50, p=100, seed=789):
         'beta': beta,
         'support': support
     }
-
-# Create a named dataset similar to the R package
-gaussian_data = generate_gaussian_data()

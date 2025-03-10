@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from tlars import TLARS, gaussian_data
+from tlars import TLARS, generate_gaussian_data
 
-# Use the included Gaussian data example
+gaussian_data = generate_gaussian_data()
 X = gaussian_data['X']
 y = gaussian_data['y']
 true_beta = gaussian_data['beta']
