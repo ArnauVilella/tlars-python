@@ -60,14 +60,14 @@ if platform.system() == 'Windows' and not skip_linking:
     print(f"Using hardcoded Windows Armadillo lib path: {lib_path}")
 elif skip_linking:
     print("Skipping Armadillo linking and library setup due to SKIP_ARMADILLO_LINKING=1")
+elif platform.system() != 'Windows':
+    # For Linux/Unix systems, add BLAS and LAPACK libraries
+    libraries.extend(['armadillo', 'blas', 'lapack'])
+    print("Adding blas and lapack libraries for Linux/Unix")
 
-# Define macros to disable BLAS/LAPACK
+# Define macros - removed flags that disable BLAS/LAPACK
 define_macros = [
-    ("ARMA_DONT_USE_LAPACK", "1"),
-    ("ARMA_DONT_USE_BLAS", "1"),
-    ("ARMA_DONT_USE_WRAPPER", "1"),
-    # Switch to STD_MUTEX and remove deprecated CXX11_MUTEX
-    ("ARMA_DONT_USE_STD_MUTEX", "1"),  # Use this instead of CXX11_MUTEX which is deprecated
+    # Keep only necessary macros, remove those that disable BLAS/LAPACK
     ("ARMA_USE_EXTERN_CXX11_RNG", "1"),
 ]
 
@@ -76,8 +76,7 @@ print(f"Define macros: {define_macros}")
 
 # Add platform-specific environment-controlled macros
 if platform.system() == 'Windows':
-    for env_var in ['ARMA_DONT_USE_LAPACK', 'ARMA_DONT_USE_BLAS', 
-                    'ARMA_DONT_USE_WRAPPER', 'ARMA_USE_EXTERN_CXX11_RNG']:
+    for env_var in ['ARMA_USE_EXTERN_CXX11_RNG']:
         if os.environ.get(env_var, '').strip() == '1':
             print(f"Ensuring macro {env_var}=1 is defined based on environment variable")
 
@@ -148,18 +147,9 @@ class BuildExt(build_ext):
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
             
-            # Add Windows-specific flags for Armadillo
-            if os.environ.get('ARMA_DONT_USE_LAPACK', '').strip() == '1':
-                opts.append('/DARMA_DONT_USE_LAPACK')
-            if os.environ.get('ARMA_DONT_USE_BLAS', '').strip() == '1':
-                opts.append('/DARMA_DONT_USE_BLAS')
-            if os.environ.get('ARMA_DONT_USE_WRAPPER', '').strip() == '1':
-                opts.append('/DARMA_DONT_USE_WRAPPER')
+            # Add Windows-specific flags for Armadillo - keeping only the necessary ones
             if os.environ.get('ARMA_USE_EXTERN_CXX11_RNG', '').strip() == '1':
                 opts.append('/DARMA_USE_EXTERN_CXX11_RNG')
-            
-            # Add STD_MUTEX flag
-            opts.append('/DARMA_DONT_USE_STD_MUTEX')
             
             # Debugging information for Windows
             print(f"Compiler type: {ct}")
@@ -179,25 +169,9 @@ class BuildExt(build_ext):
             ext.extra_compile_args = opts.copy()
             ext.extra_link_args = link_opts.copy()
             
-            # Fix the define_macros to use STD_MUTEX instead of CXX11_MUTEX
-            fixed_macros = []
-            has_std_mutex = False
-            for name, value in ext.define_macros:
-                if name == "ARMA_DONT_USE_CXX11_MUTEX":
-                    print("Replacing deprecated ARMA_DONT_USE_CXX11_MUTEX with ARMA_DONT_USE_STD_MUTEX")
-                    fixed_macros.append(("ARMA_DONT_USE_STD_MUTEX", value))
-                    has_std_mutex = True
-                else:
-                    fixed_macros.append((name, value))
-                    if name == "ARMA_DONT_USE_STD_MUTEX":
-                        has_std_mutex = True
-            
-            # Add STD_MUTEX if not present
-            if not has_std_mutex:
-                fixed_macros.append(("ARMA_DONT_USE_STD_MUTEX", "1"))
-                print("Added missing ARMA_DONT_USE_STD_MUTEX macro")
-            
-            ext.define_macros = fixed_macros
+            # Don't make any assumptions about STD_MUTEX
+            # Just keep the macros as they are defined
+            ext.define_macros = [(name, value) for name, value in ext.define_macros]
             
             # Print extension information for Windows
             if ct == 'msvc':
