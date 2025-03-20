@@ -127,7 +127,7 @@ jobs:
       - name: Build wheels (Linux)
         if: matrix.os == 'ubuntu-latest'
         env:
-          CIBW_BEFORE_ALL_LINUX: "yum install -y blas-devel lapack-devel"
+          CIBW_BEFORE_ALL_LINUX: "yum install -y epel-release && yum install -y blas-devel lapack-devel armadillo-devel"
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
           CIBW_SKIP: "*-musllinux*"
