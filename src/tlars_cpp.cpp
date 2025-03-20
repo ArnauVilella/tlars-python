@@ -61,9 +61,15 @@ tlars_cpp::tlars_cpp(py::dict lars_state)
 std::vector<double> tlars_cpp::get_beta()
 {
     std::vector<double> last_beta = beta_state.back();
-    for(int i = 0; i<p; i++)
+    if (norm_x.n_elem != p) {
+        return last_beta;
+    }
+    
+    for(int i = 0; i < p; i++)
     {
-        last_beta[i] = last_beta.at(i)/norm_x(i);
+        if (norm_x(i) > machine_prec) {
+            last_beta[i] = last_beta.at(i)/norm_x(i);
+        }
     }
     return last_beta;
 }
