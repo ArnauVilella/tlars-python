@@ -28,25 +28,25 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install build twine wheel setuptools numpy pybind11 cibuildwheel
-          # Install Armadillo on Ubuntu
+          # Install Armadillo and BLAS/LAPACK on Ubuntu
           sudo apt-get update
-          sudo apt-get install -y libarmadillo-dev
+          sudo apt-get install -y libarmadillo-dev libblas-dev liblapack-dev
       
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           python -m pip install --upgrade pip
           pip install build twine wheel setuptools numpy pybind11 cibuildwheel
-          # Install Armadillo on macOS
-          brew install armadillo
+          # Install Armadillo and OpenBLAS on macOS
+          brew install armadillo openblas
           # Find where Armadillo is installed
           echo "Armadillo location:"
           find /usr/local /opt/homebrew -name "armadillo" -type d 2>/dev/null || echo "Not found in standard locations"
           
           # Export environment variables for the build process
           echo "CPLUS_INCLUDE_PATH=$(brew --prefix armadillo)/include:$CPLUS_INCLUDE_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$(brew --prefix armadillo)/lib:$LIBRARY_PATH" >> $GITHUB_ENV
-          echo "DYLD_LIBRARY_PATH=$(brew --prefix armadillo)/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "DYLD_LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
       
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -54,6 +54,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install build twine wheel setuptools numpy pybind11 cibuildwheel
+          
+          # Install OpenBLAS
+          $openblasDir = "C:/openblas"
+          mkdir -Force $openblasDir
+          Invoke-WebRequest -Uri "https://github.com/xianyi/OpenBLAS/releases/download/v0.3.23/OpenBLAS-0.3.23-x64.zip" -OutFile "openblas.zip"
+          Expand-Archive -Path "openblas.zip" -DestinationPath $openblasDir
+          
+          # Set OpenBLAS environment variables
+          echo "OPENBLAS_HOME=C:/openblas" >> $env:GITHUB_ENV
+          echo "LIBRARY_PATH=C:/openblas/lib;$env:LIBRARY_PATH" >> $env:GITHUB_ENV
           
           # Create directory structure for Armadillo manually
           $armaDir = "C:/armadillo"
@@ -67,12 +77,10 @@ jobs:
           
           # Write config file contents line by line
           $configLines = @(
-              "// Armadillo configuration for Windows without BLAS/LAPACK",
-              "#define ARMA_DONT_USE_LAPACK",
-              "#define ARMA_DONT_USE_BLAS",
-              "#define ARMA_DONT_USE_WRAPPER",
-              "#define ARMA_DONT_USE_CXX11_MUTEX",
-              "#define ARMA_USE_EXTERN_CXX11_RNG"
+              "// Armadillo configuration for Windows with BLAS/LAPACK",
+              "#define ARMA_USE_EXTERN_CXX11_RNG",
+              "#define ARMA_USE_BLAS",
+              "#define ARMA_USE_LAPACK"
           )
           $configLines | Out-File -FilePath "$armaIncludeDir/config.hpp" -Encoding ascii
           
@@ -81,14 +89,11 @@ jobs:
           
           # Set environment variables with proper path format
           echo "ARMADILLO_INCLUDE_DIR=C:/armadillo/include" >> $env:GITHUB_ENV
-          echo "ARMA_USE_EXTERN_CXX11_RNG=1" >> $env:GITHUB_ENV
           
           # Setting Windows-specific flags
           echo "PLATFORM=Windows" >> $env:GITHUB_ENV
-          echo "SKIP_ARMADILLO_LINKING=1" >> $env:GITHUB_ENV
-          echo "ARMA_DONT_USE_WRAPPER=1" >> $env:GITHUB_ENV
-          echo "ARMA_DONT_USE_BLAS=1" >> $env:GITHUB_ENV
-          echo "ARMA_DONT_USE_LAPACK=1" >> $env:GITHUB_ENV
+          echo "ARMA_USE_BLAS=1" >> $env:GITHUB_ENV
+          echo "ARMA_USE_LAPACK=1" >> $env:GITHUB_ENV
       
       - name: Debug environment (macOS)
         if: matrix.os == 'macos-latest'
@@ -98,6 +103,8 @@ jobs:
           echo "Checking Armadillo installation:"
           ls -la $(brew --prefix armadillo)/include || echo "Cannot list include dir"
           ls -la $(brew --prefix armadillo)/lib || echo "Cannot list lib dir"
+          echo "Checking OpenBLAS installation:"
+          ls -la $(brew --prefix openblas)/lib || echo "Cannot list OpenBLAS lib dir"
       
       - name: Debug environment (Windows)
         if: matrix.os == 'windows-latest'
@@ -105,32 +112,22 @@ jobs:
         run: |
           echo "Checking environment variables:"
           echo "ARMADILLO_INCLUDE_DIR: $env:ARMADILLO_INCLUDE_DIR" 
-          echo "ARMA_USE_EXTERN_CXX11_RNG: $env:ARMA_USE_EXTERN_CXX11_RNG"
+          echo "OPENBLAS_HOME: $env:OPENBLAS_HOME"
+          echo "LIBRARY_PATH: $env:LIBRARY_PATH"
           echo "PLATFORM: $env:PLATFORM"
-          echo "SKIP_ARMADILLO_LINKING: $env:SKIP_ARMADILLO_LINKING"
-          echo "ARMA_DONT_USE_WRAPPER: $env:ARMA_DONT_USE_WRAPPER"
+          echo "ARMA_USE_BLAS: $env:ARMA_USE_BLAS"
+          echo "ARMA_USE_LAPACK: $env:ARMA_USE_LAPACK"
+          
+          echo "Checking OpenBLAS installation:"
+          Get-ChildItem "C:/openblas" -Recurse | Select-Object FullName
           
           echo "Checking Armadillo installation:"
           Get-ChildItem "C:/armadillo" -Recurse | Select-Object FullName
-          
-          echo "Checking if the armadillo header exists:"
-          if (Test-Path -Path "C:/armadillo/include/armadillo") {
-            Get-Content -Path "C:/armadillo/include/armadillo" -TotalCount 5
-          } else {
-            echo "armadillo header not found"
-          }
-          
-          echo "Checking config.hpp:"
-          if (Test-Path -Path "C:/armadillo/include/config.hpp") {
-            Get-Content -Path "C:/armadillo/include/config.hpp"
-          } else {
-            echo "config.hpp not found"
-          }
       
       - name: Build wheels (Linux)
         if: matrix.os == 'ubuntu-latest'
         env:
-          CIBW_BEFORE_ALL_LINUX: "yum install -y armadillo-devel"
+          CIBW_BEFORE_ALL_LINUX: "apt-get update && apt-get install -y libblas-dev liblapack-dev"
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
           CIBW_SKIP: "*-musllinux*"
@@ -140,6 +137,7 @@ jobs:
       - name: Build wheels (macOS)
         if: matrix.os == 'macos-latest'
         env:
+          CIBW_BEFORE_ALL_MACOS: "brew install openblas"
           CIBW_ARCHS_MACOS: "x86_64 arm64"
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
         run: |
@@ -148,7 +146,7 @@ jobs:
       - name: Build wheels (Windows)
         if: matrix.os == 'windows-latest'
         env:
-          CIBW_ENVIRONMENT: "ARMADILLO_INCLUDE_DIR=C:/armadillo/include ARMA_USE_EXTERN_CXX11_RNG=1 PLATFORM=Windows SKIP_ARMADILLO_LINKING=1 ARMA_DONT_USE_WRAPPER=1 ARMA_DONT_USE_BLAS=1 ARMA_DONT_USE_LAPACK=1"
+          CIBW_ENVIRONMENT: "ARMADILLO_INCLUDE_DIR=C:/armadillo/include OPENBLAS_HOME=C:/openblas LIBRARY_PATH=C:/openblas/lib CFLAGS=-static-libgcc -static-libstdc++"
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
           CIBW_ARCHS_WINDOWS: "AMD64"
         run: |
