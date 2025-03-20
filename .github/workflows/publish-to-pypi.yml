@@ -80,7 +80,8 @@ jobs:
               "// Armadillo configuration for Windows with BLAS/LAPACK",
               "#define ARMA_USE_EXTERN_CXX11_RNG",
               "#define ARMA_USE_BLAS",
-              "#define ARMA_USE_LAPACK"
+              "#define ARMA_USE_LAPACK",
+              "#define ARMA_DONT_USE_WRAPPER"
           )
           $configLines | Out-File -FilePath "$armaIncludeDir/config.hpp" -Encoding ascii
           
@@ -94,6 +95,7 @@ jobs:
           echo "PLATFORM=Windows" >> $env:GITHUB_ENV
           echo "ARMA_USE_BLAS=1" >> $env:GITHUB_ENV
           echo "ARMA_USE_LAPACK=1" >> $env:GITHUB_ENV
+          echo "SKIP_ARMADILLO_LINKING=1" >> $env:GITHUB_ENV
       
       - name: Debug environment (macOS)
         if: matrix.os == 'macos-latest'
@@ -150,6 +152,7 @@ jobs:
             ARMADILLO_INCLUDE_DIR=C:/armadillo/include
             OPENBLAS_HOME=C:/openblas
             LIBRARY_PATH=C:/openblas/lib
+            SKIP_ARMADILLO_LINKING=1
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
           CIBW_ARCHS_WINDOWS: "AMD64"
         run: |
