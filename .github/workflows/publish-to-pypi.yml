@@ -75,6 +75,32 @@ jobs:
           # Clone Armadillo repository
           git clone --depth 1 https://gitlab.com/conradsnicta/armadillo-code.git "$env:TEMP/arma-clone"
           
+          # Copy OpenBLAS libraries to a location with simpler names for easier linking
+          $simpleBLASDir = "C:/blas_lapack"
+          mkdir -Force $simpleBLASDir
+          
+          # Find the OpenBLAS DLL and LIB files
+          $openblasDLL = Get-ChildItem -Path "$openblasDir" -Recurse -Filter "*.dll" | Select-Object -First 1
+          $openblasLIB = Get-ChildItem -Path "$openblasDir" -Recurse -Filter "*.lib" | Select-Object -First 1
+          
+          # Copy and rename to simple names
+          if ($openblasDLL) {
+            Copy-Item -Path $openblasDLL.FullName -Destination "$simpleBLASDir/openblas.dll"
+            echo "Found and copied OpenBLAS DLL: $($openblasDLL.FullName) to $simpleBLASDir/openblas.dll"
+          } else {
+            echo "Warning: OpenBLAS DLL not found"
+          }
+          
+          if ($openblasLIB) {
+            Copy-Item -Path $openblasLIB.FullName -Destination "$simpleBLASDir/openblas.lib"
+            echo "Found and copied OpenBLAS LIB: $($openblasLIB.FullName) to $simpleBLASDir/openblas.lib"
+          } else {
+            echo "Warning: OpenBLAS LIB not found"
+          }
+          
+          # Add simple BLAS directory to path
+          echo "BLAS_LAPACK_DIR=C:/blas_lapack" >> $env:GITHUB_ENV
+          
           # Write config file contents line by line
           $configLines = @(
               "// Armadillo configuration for Windows with BLAS/LAPACK",
@@ -96,6 +122,7 @@ jobs:
           echo "ARMA_USE_BLAS=1" >> $env:GITHUB_ENV
           echo "ARMA_USE_LAPACK=1" >> $env:GITHUB_ENV
           echo "SKIP_ARMADILLO_LINKING=1" >> $env:GITHUB_ENV
+          echo "USE_OPENBLAS=1" >> $env:GITHUB_ENV
       
       - name: Debug environment (macOS)
         if: matrix.os == 'macos-latest'
@@ -153,6 +180,8 @@ jobs:
             OPENBLAS_HOME=C:/openblas
             LIBRARY_PATH=C:/openblas/lib
             SKIP_ARMADILLO_LINKING=1
+            USE_OPENBLAS=1
+            BLAS_LAPACK_DIR=C:/blas_lapack
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
           CIBW_ARCHS_WINDOWS: "AMD64"
         run: |

@@ -49,6 +49,7 @@ library_dirs = []
 
 # Check if we should skip armadillo linking on Windows
 skip_linking = platform.system() == 'Windows' and os.environ.get('SKIP_ARMADILLO_LINKING', '').strip() == '1'
+use_openblas = platform.system() == 'Windows' and os.environ.get('USE_OPENBLAS', '').strip() == '1'
 
 if platform.system() == 'Windows' and not skip_linking:
     # Only add armadillo to libraries if not skipping
@@ -58,6 +59,29 @@ if platform.system() == 'Windows' and not skip_linking:
     lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')
     library_dirs.append(lib_path)
     print(f"Using hardcoded Windows Armadillo lib path: {lib_path}")
+elif skip_linking and use_openblas:
+    # Add OpenBLAS for Windows build
+    blas_dir = os.environ.get('BLAS_LAPACK_DIR', '').strip()
+    if blas_dir:
+        print(f"Using OpenBLAS from {blas_dir}")
+        library_dirs.append(blas_dir)
+        libraries.append('openblas')
+    else:
+        print("BLAS_LAPACK_DIR environment variable not set. Searching for OpenBLAS...")
+        openblas_dir = os.environ.get('OPENBLAS_HOME', '').strip()
+        if openblas_dir:
+            # Look for .lib files in the openblas directory recursively
+            for root, dirs, files in os.walk(openblas_dir):
+                for file in files:
+                    if file.endswith('.lib'):
+                        lib_dir = os.path.dirname(os.path.join(root, file))
+                        library_dirs.append(lib_dir)
+                        lib_name = os.path.splitext(file)[0]
+                        libraries.append(lib_name)
+                        print(f"Found OpenBLAS library: {lib_name} in {lib_dir}")
+                        break
+                if libraries:  # Stop if we found libraries
+                    break
 elif skip_linking:
     print("Skipping Armadillo linking and library setup due to SKIP_ARMADILLO_LINKING=1")
 elif platform.system() != 'Windows':
@@ -164,6 +188,11 @@ class BuildExt(build_ext):
                     if 'armadillo' in ext.libraries:
                         ext.libraries.remove('armadillo')
                         print(f"Removed armadillo from {ext.name} libraries: {ext.libraries}")
+            
+            # Add OpenBLAS flags if needed
+            if os.environ.get('USE_OPENBLAS', '').strip() == '1':
+                opts.append('/DARMA_USE_BLAS')
+                opts.append('/DARMA_USE_LAPACK')
         
         for ext in self.extensions:
             ext.extra_compile_args = opts.copy()
