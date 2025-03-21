@@ -26,30 +26,27 @@ jobs:
       - name: Install dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libarmadillo-dev libblas-dev liblapack-dev
           python -m pip install --upgrade pip
           pip install build twine wheel setuptools numpy pybind11 cibuildwheel
+          # Install Armadillo and BLAS/LAPACK on Ubuntu
+          sudo apt-get update
+          sudo apt-get install -y libarmadillo-dev libblas-dev liblapack-dev
       
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          # Install Armadillo, OpenBLAS, and build tools first
-          brew install armadillo openblas gcc
+          python -m pip install --upgrade pip
+          pip install build twine wheel setuptools numpy pybind11 cibuildwheel
+          # Install Armadillo and OpenBLAS on macOS
+          brew install armadillo openblas
+          # Find where Armadillo is installed
+          echo "Armadillo location:"
+          find /usr/local /opt/homebrew -name "armadillo" -type d 2>/dev/null || echo "Not found in standard locations"
           
-          # Set environment variables before installing Python packages
+          # Export environment variables for the build process
           echo "CPLUS_INCLUDE_PATH=$(brew --prefix armadillo)/include:$CPLUS_INCLUDE_PATH" >> $GITHUB_ENV
           echo "LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
           echo "DYLD_LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
-          
-          # Install Python packages, building NumPy from source with OpenBLAS
-          python -m pip install --upgrade pip
-          pip install build twine wheel setuptools pybind11 cibuildwheel
-          pip install numpy --no-binary numpy --verbose
-          
-          # Verify NumPy is built correctly
-          python -c "import numpy; print('NumPy version:', numpy.__version__); numpy.show_config()"
       
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -78,25 +75,33 @@ jobs:
           # Clone Armadillo repository
           git clone --depth 1 https://gitlab.com/conradsnicta/armadillo-code.git "$env:TEMP/arma-clone"
           
-          # Copy OpenBLAS libraries to a simpler location
+          # Copy OpenBLAS libraries to a location with simpler names for easier linking
           $simpleBLASDir = "C:/blas_lapack"
           mkdir -Force $simpleBLASDir
           
+          # Find the OpenBLAS DLL and LIB files
           $openblasDLL = Get-ChildItem -Path "$openblasDir" -Recurse -Filter "*.dll" | Select-Object -First 1
           $openblasLIB = Get-ChildItem -Path "$openblasDir" -Recurse -Filter "*.lib" | Select-Object -First 1
           
+          # Copy and rename to simple names
           if ($openblasDLL) {
             Copy-Item -Path $openblasDLL.FullName -Destination "$simpleBLASDir/openblas.dll"
-            echo "Copied OpenBLAS DLL: $($openblasDLL.FullName) to $simpleBLASDir/openblas.dll"
+            echo "Found and copied OpenBLAS DLL: $($openblasDLL.FullName) to $simpleBLASDir/openblas.dll"
+          } else {
+            echo "Warning: OpenBLAS DLL not found"
           }
+          
           if ($openblasLIB) {
             Copy-Item -Path $openblasLIB.FullName -Destination "$simpleBLASDir/openblas.lib"
-            echo "Copied OpenBLAS LIB: $($openblasLIB.FullName) to $simpleBLASDir/openblas.lib"
+            echo "Found and copied OpenBLAS LIB: $($openblasLIB.FullName) to $simpleBLASDir/openblas.lib"
+          } else {
+            echo "Warning: OpenBLAS LIB not found"
           }
           
+          # Add simple BLAS directory to path
           echo "BLAS_LAPACK_DIR=C:/blas_lapack" >> $env:GITHUB_ENV
           
-          # Write Armadillo config file
+          # Write config file contents line by line
           $configLines = @(
               "// Armadillo configuration for Windows with BLAS/LAPACK",
               "#define ARMA_USE_EXTERN_CXX11_RNG",
@@ -106,19 +111,47 @@ jobs:
           )
           $configLines | Out-File -FilePath "$armaIncludeDir/config.hpp" -Encoding ascii
           
-          # Copy Armadillo include files
+          # Copy include files to the correct location
           Copy-Item -Path "$env:TEMP/arma-clone/include/*" -Destination $armaIncludeDir -Recurse -Force
           
+          # Set environment variables with proper path format
           echo "ARMADILLO_INCLUDE_DIR=C:/armadillo/include" >> $env:GITHUB_ENV
+          
+          # Setting Windows-specific flags
+          echo "PLATFORM=Windows" >> $env:GITHUB_ENV
+          echo "ARMA_USE_BLAS=1" >> $env:GITHUB_ENV
+          echo "ARMA_USE_LAPACK=1" >> $env:GITHUB_ENV
           echo "SKIP_ARMADILLO_LINKING=1" >> $env:GITHUB_ENV
           echo "USE_OPENBLAS=1" >> $env:GITHUB_ENV
       
-      - name: Verify NumPy configuration (macOS)
+      - name: Debug environment (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          echo "DYLD_LIBRARY_PATH: $DYLD_LIBRARY_PATH"
-          echo "NumPy configuration:"
-          python -c "import numpy; numpy.show_config()"
+          echo "CPLUS_INCLUDE_PATH: $CPLUS_INCLUDE_PATH"
+          echo "LIBRARY_PATH: $LIBRARY_PATH"
+          echo "Checking Armadillo installation:"
+          ls -la $(brew --prefix armadillo)/include || echo "Cannot list include dir"
+          ls -la $(brew --prefix armadillo)/lib || echo "Cannot list lib dir"
+          echo "Checking OpenBLAS installation:"
+          ls -la $(brew --prefix openblas)/lib || echo "Cannot list OpenBLAS lib dir"
+      
+      - name: Debug environment (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          echo "Checking environment variables:"
+          echo "ARMADILLO_INCLUDE_DIR: $env:ARMADILLO_INCLUDE_DIR" 
+          echo "OPENBLAS_HOME: $env:OPENBLAS_HOME"
+          echo "LIBRARY_PATH: $env:LIBRARY_PATH"
+          echo "PLATFORM: $env:PLATFORM"
+          echo "ARMA_USE_BLAS: $env:ARMA_USE_BLAS"
+          echo "ARMA_USE_LAPACK: $env:ARMA_USE_LAPACK"
+          
+          echo "Checking OpenBLAS installation:"
+          Get-ChildItem "C:/openblas" -Recurse | Select-Object FullName
+          
+          echo "Checking Armadillo installation:"
+          Get-ChildItem "C:/armadillo" -Recurse | Select-Object FullName
       
       - name: Build wheels (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -133,15 +166,11 @@ jobs:
       - name: Build wheels (macOS)
         if: matrix.os == 'macos-latest'
         env:
-          CIBW_BEFORE_ALL_MACOS: "brew install armadillo openblas gcc"
+          CIBW_BEFORE_ALL_MACOS: "brew install openblas"
           CIBW_ARCHS_MACOS: "x86_64 arm64"
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
           CIBW_ENVIRONMENT_MACOS: >-
-            MACOSX_DEPLOYMENT_TARGET=10.14
-            CPLUS_INCLUDE_PATH=$(brew --prefix armadillo)/include:$CPLUS_INCLUDE_PATH
-            LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$LIBRARY_PATH
-            LD_LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$LD_LIBRARY_PATH
-            DYLD_LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$DYLD_LIBRARY_PATH
+            MACOSX_DEPLOYMENT_TARGET=14.0
         run: |
           python -m cibuildwheel --output-dir dist
       
