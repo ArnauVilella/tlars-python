@@ -34,8 +34,8 @@ jobs:
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          # Install Armadillo and OpenBLAS first
-          brew install armadillo openblas
+          # Install Armadillo, OpenBLAS, and build tools first
+          brew install armadillo openblas gcc
           
           # Set environment variables before installing Python packages
           echo "CPLUS_INCLUDE_PATH=$(brew --prefix armadillo)/include:$CPLUS_INCLUDE_PATH" >> $GITHUB_ENV
@@ -43,9 +43,13 @@ jobs:
           echo "LD_LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
           echo "DYLD_LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
           
-          # Install Python packages
+          # Install Python packages, building NumPy from source with OpenBLAS
           python -m pip install --upgrade pip
-          pip install build twine wheel setuptools numpy pybind11 cibuildwheel
+          pip install build twine wheel setuptools pybind11 cibuildwheel
+          pip install numpy --no-binary numpy --verbose
+          
+          # Verify NumPy is built correctly
+          python -c "import numpy; print('NumPy version:', numpy.__version__); numpy.show_config()"
       
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -129,7 +133,7 @@ jobs:
       - name: Build wheels (macOS)
         if: matrix.os == 'macos-latest'
         env:
-          CIBW_BEFORE_ALL_MACOS: "brew install armadillo openblas"
+          CIBW_BEFORE_ALL_MACOS: "brew install armadillo openblas gcc"
           CIBW_ARCHS_MACOS: "x86_64 arm64"
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
           CIBW_ENVIRONMENT_MACOS: >-
