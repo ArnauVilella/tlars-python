@@ -166,13 +166,20 @@ jobs:
       - name: Build wheels (macOS)
         if: matrix.os == 'macos-latest'
         env:
-          CIBW_BEFORE_ALL_MACOS: "brew install openblas"
+          CIBW_BEFORE_ALL_MACOS: "brew install openblas armadillo"
           CIBW_ARCHS_MACOS: "x86_64 arm64"
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
           CIBW_ENVIRONMENT_MACOS: >-
             MACOSX_DEPLOYMENT_TARGET=14.0
+            NPY_BLAS_ORDER=openblas
+            NPY_LAPACK_ORDER=openblas
+            OPENBLAS=$(brew --prefix openblas)
+            CPLUS_INCLUDE_PATH=$(brew --prefix armadillo)/include:$CPLUS_INCLUDE_PATH
+            LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$LIBRARY_PATH
+            DYLD_LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$DYLD_LIBRARY_PATH
         run: |
           python -m cibuildwheel --output-dir dist
+
       
       - name: Build wheels (Windows)
         if: matrix.os == 'windows-latest'
