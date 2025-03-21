@@ -17,8 +17,17 @@ for k, v in os.environ.items():
 
 __version__ = '0.6.2'
 
-# Detect platform
+import platform
+import os
+import subprocess
+
+# Add platform detection
 is_windows = sys.platform.startswith('win')
+is_macos = sys.platform.startswith('darwin')
+is_linux = sys.platform.startswith('linux')
+
+# Detect architecture on macOS
+is_arm64 = platform.machine() == 'arm64' if is_macos else False
 
 # Prepare environment for compilation
 include_dirs = [
@@ -29,83 +38,63 @@ include_dirs = [
     np.get_include(),  # Add NumPy include directory explicitly
 ]
 
-# Print NumPy include path for debugging
-print(f"NumPy include path: {np.get_include()}")
+# Set appropriate deployment target for macOS
+if is_macos:
+    # For arm64, we need at least macOS 11.0
+    macosx_deployment_target = os.environ.get('MACOSX_DEPLOYMENT_TARGET', '')
+    if not macosx_deployment_target:
+        if is_arm64:
+            os.environ['MACOSX_DEPLOYMENT_TARGET'] = '11.0'
+        else:
+            os.environ['MACOSX_DEPLOYMENT_TARGET'] = '10.9'  # For x86_64
+    print(f"Using MACOSX_DEPLOYMENT_TARGET: {os.environ.get('MACOSX_DEPLOYMENT_TARGET')}")
 
-# Check for Armadillo from environment variables
-armadillo_include = os.environ.get('ARMADILLO_INCLUDE_DIR', '').strip()  # Strip any trailing spaces
-if armadillo_include:
-    include_dirs.append(armadillo_include)
-    print(f"Using Armadillo include dir from environment: {armadillo_include}")
-else:
-    # Try to use hardcoded paths
-    if platform.system() == 'Windows':
-        include_dirs.append(os.path.join('C:', os.sep, 'armadillo', 'include'))
-        print(f"Using hardcoded Windows Armadillo include path")
-
-# Check for Windows platform and skip Armadillo linking if requested
+# Platform-specific library configuration
 libraries = []
 library_dirs = []
+extra_link_args = []
 
-# Check if we should skip armadillo linking on Windows
-skip_linking = platform.system() == 'Windows' and os.environ.get('SKIP_ARMADILLO_LINKING', '').strip() == '1'
-use_openblas = platform.system() == 'Windows' and os.environ.get('USE_OPENBLAS', '').strip() == '1'
-
-if platform.system() == 'Windows' and not skip_linking:
-    # Only add armadillo to libraries if not skipping
-    libraries.append('armadillo')
+if is_windows:
+    # Windows configuration (unchanged)
+    if not skip_linking:
+        libraries.append('armadillo')
+        lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')
+        library_dirs.append(lib_path)
+    elif skip_linking and use_openblas:
+        # OpenBLAS for Windows build (unchanged)
+        blas_dir = os.environ.get('BLAS_LAPACK_DIR', '').strip()
+        if blas_dir:
+            library_dirs.append(blas_dir)
+            libraries.append('openblas')
+elif is_macos:
+    # macOS-specific configuration
+    # Use Accelerate framework instead of BLAS/LAPACK
+    extra_link_args.extend(['-framework', 'Accelerate'])
     
-    # Ensure proper path format with backslash after C:
-    lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')
-    library_dirs.append(lib_path)
-    print(f"Using hardcoded Windows Armadillo lib path: {lib_path}")
-elif skip_linking and use_openblas:
-    # Add OpenBLAS for Windows build
-    blas_dir = os.environ.get('BLAS_LAPACK_DIR', '').strip()
-    if blas_dir:
-        print(f"Using OpenBLAS from {blas_dir}")
-        library_dirs.append(blas_dir)
-        libraries.append('openblas')
+    # Detect Armadillo from environment or Homebrew
+    armadillo_include = os.environ.get('ARMADILLO_INCLUDE_DIR', '').strip()
+    if armadillo_include:
+        include_dirs.append(armadillo_include)
+        print(f"Using Armadillo include from environment: {armadillo_include}")
     else:
-        print("BLAS_LAPACK_DIR environment variable not set. Searching for OpenBLAS...")
-        openblas_dir = os.environ.get('OPENBLAS_HOME', '').strip()
-        if openblas_dir:
-            # Look for .lib files in the openblas directory recursively
-            for root, dirs, files in os.walk(openblas_dir):
-                for file in files:
-                    if file.endswith('.lib'):
-                        lib_dir = os.path.dirname(os.path.join(root, file))
-                        library_dirs.append(lib_dir)
-                        lib_name = os.path.splitext(file)[0]
-                        libraries.append(lib_name)
-                        print(f"Found OpenBLAS library: {lib_name} in {lib_dir}")
-                        break
-                if libraries:  # Stop if we found libraries
-                    break
-elif skip_linking:
-    print("Skipping Armadillo linking and library setup due to SKIP_ARMADILLO_LINKING=1")
-elif platform.system() != 'Windows':
-    # For Linux/Unix systems, add BLAS and LAPACK libraries
+        # Try to locate Armadillo via Homebrew
+        try:
+            brew_prefix = subprocess.check_output(['brew', '--prefix'], text=True).strip()
+            arma_include_dir = os.path.join(brew_prefix, 'opt', 'armadillo', 'include')
+            if os.path.exists(arma_include_dir):
+                include_dirs.append(arma_include_dir)
+                print(f"Found Armadillo include via Homebrew: {arma_include_dir}")
+        except (subprocess.SubprocessError, FileNotFoundError):
+            print("Homebrew not found or error finding Armadillo")
+    
+    # Define macOS-specific macros
+    define_macros = [
+        ("ARMA_USE_EXTERN_CXX11_RNG", "1"),
+        ("ARMA_DONT_USE_WRAPPER", None),  # Necessary when using Accelerate
+    ]
+elif is_linux:
+    # Linux configuration (unchanged)
     libraries.extend(['armadillo', 'blas', 'lapack'])
-    print("Adding blas and lapack libraries for Linux/Unix")
-
-# Define macros - removed flags that disable BLAS/LAPACK
-define_macros = [
-    # Keep only necessary macros, remove those that disable BLAS/LAPACK
-    ("ARMA_USE_EXTERN_CXX11_RNG", "1"),
-]
-
-# Print the macros for debugging
-print(f"Define macros: {define_macros}")
-
-# Add platform-specific environment-controlled macros
-if platform.system() == 'Windows':
-    for env_var in ['ARMA_USE_EXTERN_CXX11_RNG']:
-        if os.environ.get(env_var, '').strip() == '1':
-            print(f"Ensuring macro {env_var}=1 is defined based on environment variable")
-
-print(f"Final libraries list: {libraries}")
-print(f"Final library_dirs list: {library_dirs}")
 
 # Define the extension module
 ext_modules = [
