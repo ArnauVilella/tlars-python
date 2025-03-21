@@ -54,7 +54,7 @@ jobs:
           
           # Now install pip packages AFTER environment variables are set
           pip install build twine wheel setuptools pybind11 cibuildwheel
-          pip install numpy==1.26.4  # Install a specific version that's known to work with OpenBLAS
+          pip install numpy  # Use default version
 
       - name: Verify NumPy configuration (macOS)
         if: matrix.os == 'macos-latest'
@@ -187,8 +187,8 @@ jobs:
           CIBW_BEFORE_ALL_MACOS: "brew install openblas"
           CIBW_ARCHS_MACOS: "x86_64 arm64"
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
-          CIBW_BEFORE_BUILD_MACOS: "pip install numpy==1.26.4 pybind11>=2.6.0"
-          CIBW_BEFORE_BUILD_MACOS_CP39: "pip install numpy==1.24.4 pybind11>=2.6.0"  # Use older NumPy for Python 3.9
+          CIBW_BEFORE_BUILD_MACOS: "pip install pybind11>=2.6.0 numpy"
+          CIBW_BEFORE_BUILD_MACOS_CP39: "pip install pybind11>=2.6.0 numpy==1.24.4"  # Use older NumPy for Python 3.9
           CIBW_ENVIRONMENT_MACOS: >-
             MACOSX_DEPLOYMENT_TARGET=14.0
             DYLD_LIBRARY_PATH=$(brew --prefix openblas)/lib:$(brew --prefix armadillo)/lib:$DYLD_LIBRARY_PATH
