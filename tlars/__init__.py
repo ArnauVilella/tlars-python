@@ -35,7 +35,7 @@ class TLARS:
     """
     
     def __init__(self, X=None, y=None, verbose=False, intercept=True, standardize=True, 
-                 num_dummies=0, type='lar', lars_state=None, info=True):
+                 num_dummies=0, type='lar', lars_state=None, info=False):
         # If a previous state is provided, use it to initialize
         if lars_state is not None:
             if not isinstance(lars_state, dict) or len(lars_state) != 4:
