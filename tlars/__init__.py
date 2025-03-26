@@ -90,7 +90,7 @@ class TLARS:
                 print(f"\t\t The first p = {X.shape[1] - num_dummies} predictors are the original predictors and")
                 print(f"\t\t the last num_dummies = {num_dummies} predictors are dummies")
     
-    def fit(self, T_stop=None, early_stop=True, info=True):
+    def fit(self, T_stop=None, early_stop=True, info=False):
         """
         Fit the TLARS model.
         
