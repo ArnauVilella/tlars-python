@@ -136,11 +136,11 @@ class TLARS:
                 print(f"\t\t Finished T-LARS step(s)...")
                 print(f"\t\t\t - The results are stored in the TLARS object.")
                 print(f"\t\t\t - New value of T_stop: {T_stop}.")
-                print(f"\t\t\t - Time elapsed: {elapsed:.3f} sec.")
+                print(f"\t\t\t - Time elapsed: {elapsed:.4f} sec.")
             else:
                 print(f"\t\t Finished T-LARS step(s). No early stopping!")
                 print(f"\t\t\t - The results are stored in the TLARS object.")
-                print(f"\t\t\t - Time elapsed: {elapsed:.3f} sec.")
+                print(f"\t\t\t - Time elapsed: {elapsed:.4f} sec.")
         else:
             # Execute T-LARS step without info
             self._model.execute_lars_step(T_stop, early_stop)
