@@ -1,0 +1,229 @@
+name: Publish Python Package
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  build_wheels:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine wheel setuptools numpy pybind11 cibuildwheel
+          # Install Armadillo and BLAS/LAPACK on Ubuntu
+          sudo apt-get update
+          sudo apt-get install -y libarmadillo-dev libblas-dev liblapack-dev
+      
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine wheel setuptools numpy pybind11 cibuildwheel
+          # Install Armadillo and OpenBLAS on macOS
+          brew install armadillo openblas
+          # Find where Armadillo is installed
+          echo "Armadillo location:"
+          find /usr/local /opt/homebrew -name "armadillo" -type d 2>/dev/null || echo "Not found in standard locations"
+          
+          # Export environment variables for the build process
+          echo "CPLUS_INCLUDE_PATH=$(brew --prefix armadillo)/include:$CPLUS_INCLUDE_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+      
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine wheel setuptools numpy pybind11 cibuildwheel
+          
+          # Install OpenBLAS
+          $openblasDir = "C:/openblas"
+          mkdir -Force $openblasDir
+          Invoke-WebRequest -Uri "https://github.com/xianyi/OpenBLAS/releases/download/v0.3.23/OpenBLAS-0.3.23-x64.zip" -OutFile "openblas.zip"
+          Expand-Archive -Path "openblas.zip" -DestinationPath $openblasDir
+          
+          # Set OpenBLAS environment variables
+          echo "OPENBLAS_HOME=C:/openblas" >> $env:GITHUB_ENV
+          echo "LIBRARY_PATH=C:/openblas/lib;$env:LIBRARY_PATH" >> $env:GITHUB_ENV
+          
+          # Create directory structure for Armadillo manually
+          $armaDir = "C:/armadillo"
+          $armaIncludeDir = "$armaDir/include"
+          
+          mkdir -Force $armaDir
+          mkdir -Force $armaIncludeDir
+          
+          # Clone Armadillo repository
+          git clone --depth 1 https://gitlab.com/conradsnicta/armadillo-code.git "$env:TEMP/arma-clone"
+          
+          # Copy OpenBLAS libraries to a location with simpler names for easier linking
+          $simpleBLASDir = "C:/blas_lapack"
+          mkdir -Force $simpleBLASDir
+          
+          # Find the OpenBLAS DLL and LIB files
+          $openblasDLL = Get-ChildItem -Path "$openblasDir" -Recurse -Filter "*.dll" | Select-Object -First 1
+          $openblasLIB = Get-ChildItem -Path "$openblasDir" -Recurse -Filter "*.lib" | Select-Object -First 1
+          
+          # Copy and rename to simple names
+          if ($openblasDLL) {
+            Copy-Item -Path $openblasDLL.FullName -Destination "$simpleBLASDir/openblas.dll"
+            echo "Found and copied OpenBLAS DLL: $($openblasDLL.FullName) to $simpleBLASDir/openblas.dll"
+          } else {
+            echo "Warning: OpenBLAS DLL not found"
+          }
+          
+          if ($openblasLIB) {
+            Copy-Item -Path $openblasLIB.FullName -Destination "$simpleBLASDir/openblas.lib"
+            echo "Found and copied OpenBLAS LIB: $($openblasLIB.FullName) to $simpleBLASDir/openblas.lib"
+          } else {
+            echo "Warning: OpenBLAS LIB not found"
+          }
+          
+          # Add simple BLAS directory to path
+          echo "BLAS_LAPACK_DIR=C:/blas_lapack" >> $env:GITHUB_ENV
+          
+          # Write config file contents line by line
+          $configLines = @(
+              "// Armadillo configuration for Windows with BLAS/LAPACK",
+              "#define ARMA_USE_EXTERN_CXX11_RNG",
+              "#define ARMA_USE_BLAS",
+              "#define ARMA_USE_LAPACK",
+              "#define ARMA_DONT_USE_WRAPPER"
+          )
+          $configLines | Out-File -FilePath "$armaIncludeDir/config.hpp" -Encoding ascii
+          
+          # Copy include files to the correct location
+          Copy-Item -Path "$env:TEMP/arma-clone/include/*" -Destination $armaIncludeDir -Recurse -Force
+          
+          # Set environment variables with proper path format
+          echo "ARMADILLO_INCLUDE_DIR=C:/armadillo/include" >> $env:GITHUB_ENV
+          
+          # Setting Windows-specific flags
+          echo "PLATFORM=Windows" >> $env:GITHUB_ENV
+          echo "ARMA_USE_BLAS=1" >> $env:GITHUB_ENV
+          echo "ARMA_USE_LAPACK=1" >> $env:GITHUB_ENV
+          echo "SKIP_ARMADILLO_LINKING=1" >> $env:GITHUB_ENV
+          echo "USE_OPENBLAS=1" >> $env:GITHUB_ENV
+      
+      - name: Debug environment (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "CPLUS_INCLUDE_PATH: $CPLUS_INCLUDE_PATH"
+          echo "LIBRARY_PATH: $LIBRARY_PATH"
+          echo "Checking Armadillo installation:"
+          ls -la $(brew --prefix armadillo)/include || echo "Cannot list include dir"
+          ls -la $(brew --prefix armadillo)/lib || echo "Cannot list lib dir"
+          echo "Checking OpenBLAS installation:"
+          ls -la $(brew --prefix openblas)/lib || echo "Cannot list OpenBLAS lib dir"
+      
+      - name: Debug environment (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          echo "Checking environment variables:"
+          echo "ARMADILLO_INCLUDE_DIR: $env:ARMADILLO_INCLUDE_DIR" 
+          echo "OPENBLAS_HOME: $env:OPENBLAS_HOME"
+          echo "LIBRARY_PATH: $env:LIBRARY_PATH"
+          echo "PLATFORM: $env:PLATFORM"
+          echo "ARMA_USE_BLAS: $env:ARMA_USE_BLAS"
+          echo "ARMA_USE_LAPACK: $env:ARMA_USE_LAPACK"
+          
+          echo "Checking OpenBLAS installation:"
+          Get-ChildItem "C:/openblas" -Recurse | Select-Object FullName
+          
+          echo "Checking Armadillo installation:"
+          Get-ChildItem "C:/armadillo" -Recurse | Select-Object FullName
+      
+      - name: Build wheels (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          CIBW_BEFORE_ALL_LINUX: "yum install -y epel-release && yum install -y blas-devel lapack-devel armadillo-devel"
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
+          CIBW_SKIP: "*-musllinux*"
+        run: |
+          python -m cibuildwheel --output-dir dist
+      
+      - name: Build wheels (macOS)
+        if: matrix.os == 'macos-latest'
+        env:
+          CIBW_BEFORE_ALL_MACOS: "brew install openblas"
+          CIBW_ARCHS_MACOS: "x86_64 arm64"
+          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
+          CIBW_ENVIRONMENT_MACOS: >-
+            MACOSX_DEPLOYMENT_TARGET=14.0
+        run: |
+          python -m cibuildwheel --output-dir dist
+      
+      - name: Build wheels (Windows)
+        if: matrix.os == 'windows-latest'
+        env:
+          CIBW_ENVIRONMENT: >-
+            ARMADILLO_INCLUDE_DIR=C:/armadillo/include
+            OPENBLAS_HOME=C:/openblas
+            LIBRARY_PATH=C:/openblas/lib
+            SKIP_ARMADILLO_LINKING=1
+            USE_OPENBLAS=1
+            BLAS_LAPACK_DIR=C:/blas_lapack
+          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
+          CIBW_ARCHS_WINDOWS: "AMD64"
+        run: |
+          python -m cibuildwheel --output-dir dist
+      
+      - name: Build source distribution
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m build --sdist
+      
+      - name: Check package
+        run: |
+          python -m twine check dist/*
+      
+      - name: Store artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: dist/*
+          retention-days: 5
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: build_wheels
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist/
+          merge-multiple: true
+      
+      - name: List artifacts
+        run: find dist -type f | sort
+      
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages_dir: dist/
+          skip_existing: true
