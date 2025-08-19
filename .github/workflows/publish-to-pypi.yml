@@ -47,22 +47,22 @@ jobs:
           # Build OpenBLAS from source
           git clone https://github.com/xianyi/OpenBLAS.git
           cd OpenBLAS
-          make NO_SHARED=1 LDFLAGS="-L/opt/homebrew/lib/gcc/current"
-          make PREFIX=/usr/local/openblas install
+          make NO_SHARED=1 PREFIX=${{ runner.temp }}/openblas LDFLAGS="-L/opt/homebrew/lib/gcc/current"
+          make PREFIX=${{ runner.temp }}/openblas install
           cd ..
           
           # Build Armadillo from source
           curl -L http://sourceforge.net/projects/arma/files/armadillo-11.4.1.tar.xz -o armadillo.tar.xz
           tar -xf armadillo.tar.xz
           cd armadillo-11.4.1
-          cmake . -DOPENBLAS_ROOT=/usr/local/openblas
+          cmake . -DOPENBLAS_ROOT=${{ runner.temp }}/openblas
           make
           make install
           cd ..
           
           # Export environment variables for the build process
           echo "CPLUS_INCLUDE_PATH=/usr/local/include:$CPLUS_INCLUDE_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=/usr/local/lib:/usr/local/openblas/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=/usr/local/lib:${{ runner.temp }}/openblas/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
