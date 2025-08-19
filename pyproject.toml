@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=42", "wheel", "pybind11>=2.6.0", 'numpy>=1.19.0,<2.0']
+requires = ["setuptools>=42", "wheel", "pybind11>=2.12", "numpy"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "tlars"
-version = "0.6.3"
+version = "0.6.4"
 description = "Python port of the tlars R package for Terminating-LARS (T-LARS) algorithm"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -21,10 +21,11 @@ classifiers = [
     "Intended Audience :: Science/Research",
 ]
 dependencies = [
-    "numpy>=1.19.0,<2.0",
+    "numpy",
     "matplotlib>=3.3.0",
+    "pybind11>=2.12"
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/ArnauVilella/tlars-python"
-"Bug Tracker" = "https://github.com/ArnauVilella/tlars-python/issues" 
+"Bug Tracker" = "https://github.com/ArnauVilella/tlars-python/issues"

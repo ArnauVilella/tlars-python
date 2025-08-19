@@ -15,7 +15,7 @@ for k, v in os.environ.items():
     if 'ARM' in k.upper() or 'INCLUDE' in k.upper() or 'LIB' in k.upper():
         print(f"  {k}: {v}")
 
-__version__ = '0.6.3'
+__version__ = '0.6.4'
 
 # Detect platform
 is_windows = sys.platform.startswith('win')
@@ -55,7 +55,7 @@ if platform.system() == 'Windows' and not skip_linking:
     # Only add armadillo to libraries if not skipping
     libraries.append('armadillo')
     
-    # Ensure proper path format with backslash after C:
+    # Ensure proper path format with backslash after C:\
     lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')
     library_dirs.append(lib_path)
     print(f"Using hardcoded Windows Armadillo lib path: {lib_path}")
@@ -169,7 +169,7 @@ class BuildExt(build_ext):
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
         elif ct == 'msvc':
-            opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
+            opts.append('/DVERSION_INFO="%s"' % self.distribution.get_version())
             
             # Add Windows-specific flags for Armadillo - keeping only the necessary ones
             if os.environ.get('ARMA_USE_EXTERN_CXX11_RNG', '').strip() == '1':
@@ -220,8 +220,8 @@ setup(
     description='Python port of the tlars R package by Jasin Machkour',
     long_description='',
     ext_modules=ext_modules,
-    install_requires=['pybind11>=2.6.0', 'numpy>=1.19.0,<2.0', 'matplotlib>=3.3.0'],
-    setup_requires=['pybind11>=2.6.0', 'numpy>=1.19.0,<2.0', 'matplotlib>=3.3.0'],
+    install_requires=['pybind11>=2.6.0', 'numpy', 'matplotlib>=3.3.0'],
+    setup_requires=['pybind11>=2.6.0', 'numpy', 'matplotlib>=3.3.0'],
     cmdclass={'build_ext': BuildExt},
     packages=['tlars'],
     zip_safe=False,

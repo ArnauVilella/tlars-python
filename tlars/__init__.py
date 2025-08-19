@@ -249,7 +249,11 @@ class TLARS:
         
         # Add legend if showing both variable types
         if include_dummies:
-            ax.legend(['Original variables', 'Dummies'], loc=legend_pos)
+            # Create proxy artists for legend
+            from matplotlib.lines import Line2D
+            legend_elements = [Line2D([0], [0], color=col_selected, linestyle=ls_selected, label='Active variables'),
+                               Line2D([0], [0], color=col_dummies, linestyle=ls_dummies, label='Dummies')]
+            ax.legend(handles=legend_elements, loc=legend_pos)
         
         # Set labels
         ax.set_xlabel(xlabel)
