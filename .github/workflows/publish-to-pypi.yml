@@ -151,7 +151,7 @@ jobs:
           ls -la /usr/local/include || echo "Cannot list include dir"
           ls -la /usr/local/lib || echo "Cannot list lib dir"
           echo "Checking OpenBLAS installation:"
-          ls -la /usr/local/openblas/lib || echo "Cannot list OpenBLAS lib dir"
+          ls -la ${{ runner.temp }}/openblas/lib || echo "Cannot list OpenBLAS lib dir"
       
       - name: Debug environment (Windows)
         if: matrix.os == 'windows-latest'
