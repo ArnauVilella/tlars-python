@@ -1,5 +1,4 @@
 name: Publish Python Package
-
 on:
   release:
     types: [created]
@@ -41,28 +40,46 @@ jobs:
           pip install build twine wheel setuptools numpy pybind11 cibuildwheel
           python -c "import numpy; print(f'NumPy version: {numpy.__version__}')"
           python -c "import pybind11; print(f'pybind11 version: {pybind11.__version__}')"
-          # Install Armadillo and OpenBLAS on macOS
-          brew install cmake gfortran
           
-          # Build OpenBLAS from source
+          # Install required tools
+          brew install cmake gfortran pkg-config
+          
+          # Ensure we have a recent cmake version
+          cmake --version
+          
+          # Build OpenBLAS from source with proper flags
           git clone https://github.com/xianyi/OpenBLAS.git
           cd OpenBLAS
-          make NO_SHARED=1 PREFIX=${{ runner.temp }}/openblas LDFLAGS="-L/opt/homebrew/lib/gcc/current"
+          
+          # Use make with explicit settings for macOS ARM64
+          make NO_SHARED=0 PREFIX=${{ runner.temp }}/openblas \
+               TARGET=ARMV8 BINARY=64 USE_THREAD=1 \
+               CC=clang FC=gfortran
           make PREFIX=${{ runner.temp }}/openblas install
           cd ..
           
-          # Build Armadillo from source
-          curl -L http://sourceforge.net/projects/arma/files/armadillo-11.4.1.tar.xz -o armadillo.tar.xz
+          # Download and build Armadillo from source
+          curl -L https://sourceforge.net/projects/arma/files/armadillo-12.6.4.tar.xz/download -o armadillo.tar.xz
           tar -xf armadillo.tar.xz
-          cd armadillo-11.4.1
-          cmake . -DOPENBLAS_ROOT=${{ runner.temp }}/openblas -DCMAKE_POLICY_VERSION=3.12
-          make
-          make install
-          cd ..
+          cd armadillo-*
+          
+          # Configure Armadillo with proper CMake settings
+          mkdir build && cd build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DOPENBLAS_ROOT=${{ runner.temp }}/openblas \
+            -DDETECT_HDF5=OFF \
+            -DCMAKE_POLICY_DEFAULT_CMP0074=NEW \
+            -DCMAKE_POLICY_DEFAULT_CMP0144=NEW
+          make -j$(sysctl -n hw.ncpu)
+          sudo make install
+          cd ../..
           
           # Export environment variables for the build process
-          echo "CPLUS_INCLUDE_PATH=/usr/local/include:$CPLUS_INCLUDE_PATH" >> $GITHUB_ENV
+          echo "CPLUS_INCLUDE_PATH=/usr/local/include:${{ runner.temp }}/openblas/include:$CPLUS_INCLUDE_PATH" >> $GITHUB_ENV
           echo "LIBRARY_PATH=/usr/local/lib:${{ runner.temp }}/openblas/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=${{ runner.temp }}/openblas/lib/pkgconfig:/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
       
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -147,11 +164,15 @@ jobs:
         run: |
           echo "CPLUS_INCLUDE_PATH: $CPLUS_INCLUDE_PATH"
           echo "LIBRARY_PATH: $LIBRARY_PATH"
+          echo "PKG_CONFIG_PATH: $PKG_CONFIG_PATH"
           echo "Checking Armadillo installation:"
-          ls -la /usr/local/include || echo "Cannot list include dir"
-          ls -la /usr/local/lib || echo "Cannot list lib dir"
+          ls -la /usr/local/include/armadillo* || echo "Cannot find armadillo headers"
+          ls -la /usr/local/lib/*arma* || echo "Cannot find armadillo libraries"
           echo "Checking OpenBLAS installation:"
           ls -la ${{ runner.temp }}/openblas/lib || echo "Cannot list OpenBLAS lib dir"
+          echo "Architecture info:"
+          uname -m
+          arch
       
       - name: Debug environment (Windows)
         if: matrix.os == 'windows-latest'
@@ -184,8 +205,25 @@ jobs:
       - name: Build wheels (macOS)
         if: matrix.os == 'macos-latest'
         env:
+          CIBW_BEFORE_ALL_MACOS: >-
+            brew install cmake gfortran pkg-config &&
+            git clone https://github.com/xianyi/OpenBLAS.git /tmp/openblas &&
+            cd /tmp/openblas &&
+            make NO_SHARED=0 PREFIX=/usr/local TARGET=ARMV8 BINARY=64 USE_THREAD=1 CC=clang FC=gfortran &&
+            make PREFIX=/usr/local install &&
+            cd / &&
+            curl -L https://sourceforge.net/projects/arma/files/armadillo-12.6.4.tar.xz/download -o /tmp/armadillo.tar.xz &&
+            cd /tmp && tar -xf armadillo.tar.xz && cd armadillo-* &&
+            mkdir build && cd build &&
+            cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DDETECT_HDF5=OFF &&
+            make -j$(sysctl -n hw.ncpu) && make install
           CIBW_ENVIRONMENT_MACOS: >-
             MACOSX_DEPLOYMENT_TARGET=11.0
+            CPLUS_INCLUDE_PATH=/usr/local/include:$CPLUS_INCLUDE_PATH
+            LIBRARY_PATH=/usr/local/lib:$LIBRARY_PATH
+          CIBW_ARCHS_MACOS: "x86_64 arm64"
+          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
+          CIBW_SKIP: "cp36-* cp37-*"
         run: |
           echo "CPLUS_INCLUDE_PATH: $CPLUS_INCLUDE_PATH"
           echo "LIBRARY_PATH: $LIBRARY_PATH"
