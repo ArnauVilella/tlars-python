@@ -55,7 +55,7 @@ jobs:
           curl -L http://sourceforge.net/projects/arma/files/armadillo-11.4.1.tar.xz -o armadillo.tar.xz
           tar -xf armadillo.tar.xz
           cd armadillo-11.4.1
-          cmake . -DOPENBLAS_ROOT=${{ runner.temp }}/openblas
+          cmake . -DOPENBLAS_ROOT=${{ runner.temp }}/openblas -DCMAKE_POLICY_VERSION=3.12
           make
           make install
           cd ..
