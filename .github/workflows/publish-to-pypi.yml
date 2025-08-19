@@ -47,7 +47,7 @@ jobs:
           # Build OpenBLAS from source
           git clone https://github.com/xianyi/OpenBLAS.git
           cd OpenBLAS
-          make NO_SHARED=1
+          make NO_SHARED=1 LDFLAGS="-L/opt/homebrew/lib/gcc/current"
           make PREFIX=/usr/local/openblas install
           cd ..
           
