@@ -42,14 +42,27 @@ jobs:
           python -c "import numpy; print(f'NumPy version: {numpy.__version__}')"
           python -c "import pybind11; print(f'pybind11 version: {pybind11.__version__}')"
           # Install Armadillo and OpenBLAS on macOS
-          brew install armadillo openblas
-          # Find where Armadillo is installed
-          echo "Armadillo location:"
-          find /usr/local /opt/homebrew -name "armadillo" -type d 2>/dev/null || echo "Not found in standard locations"
+          brew install cmake gfortran
+          
+          # Build OpenBLAS from source
+          git clone https://github.com/xianyi/OpenBLAS.git
+          cd OpenBLAS
+          make NO_SHARED=1
+          make PREFIX=/usr/local/openblas install
+          cd ..
+          
+          # Build Armadillo from source
+          curl -L http://sourceforge.net/projects/arma/files/armadillo-11.4.1.tar.xz -o armadillo.tar.xz
+          tar -xf armadillo.tar.xz
+          cd armadillo-11.4.1
+          cmake . -DOPENBLAS_ROOT=/usr/local/openblas
+          make
+          make install
+          cd ..
           
           # Export environment variables for the build process
-          echo "CPLUS_INCLUDE_PATH=$(brew --prefix armadillo)/include:$CPLUS_INCLUDE_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$(brew --prefix armadillo)/lib:$(brew --prefix openblas)/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "CPLUS_INCLUDE_PATH=/usr/local/include:$CPLUS_INCLUDE_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=/usr/local/lib:/usr/local/openblas/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -135,10 +148,10 @@ jobs:
           echo "CPLUS_INCLUDE_PATH: $CPLUS_INCLUDE_PATH"
           echo "LIBRARY_PATH: $LIBRARY_PATH"
           echo "Checking Armadillo installation:"
-          ls -la $(brew --prefix armadillo)/include || echo "Cannot list include dir"
-          ls -la $(brew --prefix armadillo)/lib || echo "Cannot list lib dir"
+          ls -la /usr/local/include || echo "Cannot list include dir"
+          ls -la /usr/local/lib || echo "Cannot list lib dir"
           echo "Checking OpenBLAS installation:"
-          ls -la $(brew --prefix openblas)/lib || echo "Cannot list OpenBLAS lib dir"
+          ls -la /usr/local/openblas/lib || echo "Cannot list OpenBLAS lib dir"
       
       - name: Debug environment (Windows)
         if: matrix.os == 'windows-latest'
@@ -171,9 +184,6 @@ jobs:
       - name: Build wheels (macOS)
         if: matrix.os == 'macos-latest'
         env:
-          CIBW_BEFORE_ALL_MACOS: "brew install armadillo openblas"
-          CIBW_ARCHS_MACOS: "x86_64 arm64"
-          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
           CIBW_ENVIRONMENT_MACOS: >-
             MACOSX_DEPLOYMENT_TARGET=11.0
         run: |
