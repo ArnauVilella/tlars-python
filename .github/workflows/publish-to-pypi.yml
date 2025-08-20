@@ -41,7 +41,7 @@ jobs:
           python -c "import numpy; print(f'NumPy version: {numpy.__version__}')"
           python -c "import pybind11; print(f'pybind11 version: {pybind11.__version__}')"
           
-          # Install dependencies via Homebrew (much more reliable)
+          # Install dependencies via Homebrew - simple and reliable
           brew install armadillo openblas pkg-config
           
           # Export environment variables for the build process
