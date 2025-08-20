@@ -166,7 +166,7 @@ jobs:
         env:
           CIBW_BEFORE_ALL_LINUX: "yum install -y epel-release && yum install -y blas-devel lapack-devel armadillo-devel"
           CIBW_ARCHS_LINUX: "x86_64"
-          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
+          CIBW_BUILD: "cp36-* cp37-* cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
           CIBW_SKIP: "*-musllinux*"
         run: |
           python -m cibuildwheel --output-dir dist
@@ -182,8 +182,7 @@ jobs:
             LIBRARY_PATH="$(brew --prefix)/lib:$LIBRARY_PATH"
             PKG_CONFIG_PATH="$(brew --prefix)/lib/pkgconfig:$PKG_CONFIG_PATH"
           CIBW_ARCHS_MACOS: "x86_64 arm64"
-          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
-          CIBW_SKIP: "cp36-* cp37-*"
+          CIBW_BUILD: "cp36-* cp37-* cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
           # Set different deployment targets for different architectures
           CIBW_ENVIRONMENT_MACOS_X86_64: >-
             MACOSX_DEPLOYMENT_TARGET=15.0
@@ -212,7 +211,7 @@ jobs:
             SKIP_ARMADILLO_LINKING=1
             USE_OPENBLAS=1
             BLAS_LAPACK_DIR=C:/blas_lapack
-          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
+          CIBW_BUILD: "cp36-* cp37-* cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
           CIBW_ARCHS_WINDOWS: "AMD64"
         run: |
           python -m cibuildwheel --output-dir dist

@@ -18,6 +18,14 @@ pip install tlars
 
 This is the recommended installation method as it will automatically install pre-built wheels for your platform with all required dependencies.
 
+### Requirements
+
+The package has the following requirements:
+
+- Python >= 3.6
+- numpy
+- matplotlib
+
 ## Usage
 
 ```python
