@@ -89,7 +89,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         env:
           CIBW_BEFORE_ALL_MACOS: "brew install armadillo openblas"
-          CIBW_ENVIRONMENT_MACOS: 'CXXFLAGS="-I/opt/homebrew/include" LDFLAGS="-L/opt/homebrew/lib"'
+          CIBW_ENVIRONMENT_MACOS: 'CXXFLAGS="-I$(brew --prefix)/include" LDFLAGS="-L$(brew --prefix)/lib"'
           CIBW_ARCHS_MACOS: "x86_64 arm64"
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
           CIBW_SKIP: "cp36-* cp37-*"
