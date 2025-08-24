@@ -34,7 +34,7 @@ class TLARS:
         the created object is printed.
     """
     
-    def __init__(self, X=None, y=None, verbose=False, intercept=True, standardize=True, 
+    def __init__(self, X=None, y=None, verbose=False, intercept=False, standardize=True, 
                  num_dummies=0, type='lar', lars_state=None, info=False):
         # If a previous state is provided, use it to initialize
         if lars_state is not None:
