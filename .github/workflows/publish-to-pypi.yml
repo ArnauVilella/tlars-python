@@ -176,13 +176,20 @@ jobs:
         env:
           CIBW_BEFORE_ALL_MACOS: >-
             brew install armadillo openblas pkg-config
+          CIBW_ENVIRONMENT_MACOS: >-
+            MACOSX_DEPLOYMENT_TARGET=15.0
+            CXXFLAGS="-I$(brew --prefix)/include"
+            LDFLAGS="-L$(brew --prefix)/lib"
+            CPLUS_INCLUDE_PATH="$(brew --prefix)/include:$CPLUS_INCLUDE_PATH"
+            LIBRARY_PATH="$(brew --prefix)/lib:$LIBRARY_PATH"
+            PKG_CONFIG_PATH="$(brew --prefix)/lib/pkgconfig:$PKG_CONFIG_PATH"
           
           CIBW_ARCHS_MACOS: "x86_64 arm64"
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
           CIBW_SKIP: "cp36-* cp37-*"
           # Set different deployment targets for different architectures
           CIBW_ENVIRONMENT_MACOS_X86_64: >-
-            MACOSX_DEPLOYMENT_TARGET=10.15
+            MACOSX_DEPLOYMENT_TARGET=15.0
             CXXFLAGS="-I$(brew --prefix)/include"
             LDFLAGS="-L$(brew --prefix)/lib"
             CPLUS_INCLUDE_PATH="$(brew --prefix)/include:$CPLUS_INCLUDE_PATH"
