@@ -175,7 +175,12 @@ jobs:
         if: matrix.os == 'macos-latest'
         env:
           CIBW_BEFORE_ALL_MACOS: >-
-            brew install armadillo openblas pkg-config
+            if [ $(arch) = 'arm64' ]; then
+              export MACOSX_DEPLOYMENT_TARGET=11.0
+            else
+              export MACOSX_DEPLOYMENT_TARGET=10.7
+            fi
+            brew install --build-from-source armadillo openblas pkg-config
           CIBW_ENVIRONMENT_MACOS: >-
             MACOSX_DEPLOYMENT_TARGET=10.7
             CXXFLAGS="-I$(brew --prefix)/include"
