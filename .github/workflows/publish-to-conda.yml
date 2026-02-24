@@ -1,11 +1,9 @@
 name: Publish to Conda (Anaconda.org)
 
 # This workflow builds conda packages and uploads them to your Anaconda.org channel.
-# It runs on release (alongside the PyPI workflow) or manually.
+# Manually triggered only.
 
 on:
-  release:
-    types: [created]
   workflow_dispatch:
 
 jobs:
@@ -42,7 +40,6 @@ jobs:
           conda build conda-recipe --python ${{ matrix.python-version }} --output-folder conda-out/
 
       - name: Upload to Anaconda.org
-        if: github.event_name == 'release'
         shell: bash -el {0}
         env:
           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
