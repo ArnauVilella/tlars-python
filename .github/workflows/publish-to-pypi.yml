@@ -100,11 +100,13 @@ jobs:
             yum install -y epel-release &&
             yum install -y blas-devel lapack-devel armadillo-devel
           CIBW_BEFORE_ALL_MACOS: >-
-            brew install armadillo openblas pkg-config
+            brew install openblas pkg-config &&
+            git clone --depth 1 https://gitlab.com/conradsnicta/armadillo-code.git /tmp/arma-clone &&
+            cp -r /tmp/arma-clone/include/* $(brew --prefix)/include/
           CIBW_ENVIRONMENT_MACOS: >-
             MACOSX_DEPLOYMENT_TARGET=11.0
             CXXFLAGS="-I$(brew --prefix)/include"
-            LDFLAGS="-L$(brew --prefix)/lib"
+            LDFLAGS="-L$(brew --prefix)/lib -lopenblas"
             CPLUS_INCLUDE_PATH="$(brew --prefix)/include"
             LIBRARY_PATH="$(brew --prefix)/lib"
             PKG_CONFIG_PATH="$(brew --prefix)/lib/pkgconfig"
