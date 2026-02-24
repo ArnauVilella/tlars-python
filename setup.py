@@ -84,16 +84,25 @@ elif skip_linking and use_openblas:
                     break
 elif skip_linking:
     print("Skipping Armadillo linking and library setup due to SKIP_ARMADILLO_LINKING=1")
+elif platform.system() == 'Darwin':
+    # macOS: use the Accelerate framework (universal BLAS/LAPACK, works for both x86_64 and arm64)
+    # Armadillo is header-only; no -larmadillo needed
+    print("macOS detected: using Accelerate framework for BLAS/LAPACK")
 elif platform.system() != 'Windows':
-    # For Linux/Unix systems, add BLAS and LAPACK libraries
+    # For Linux systems, add BLAS and LAPACK libraries
     libraries.extend(['armadillo', 'blas', 'lapack'])
-    print("Adding blas and lapack libraries for Linux/Unix")
+    print("Adding armadillo, blas and lapack libraries for Linux")
 
 # Define macros - removed flags that disable BLAS/LAPACK
 define_macros = [
-    # Keep only necessary macros, remove those that disable BLAS/LAPACK
     ("ARMA_USE_EXTERN_CXX11_RNG", "1"),
 ]
+
+# On macOS, tell Armadillo to call BLAS/LAPACK directly (no wrapper lib)
+if platform.system() == 'Darwin':
+    define_macros.append(("ARMA_USE_BLAS", "1"))
+    define_macros.append(("ARMA_USE_LAPACK", "1"))
+    define_macros.append(("ARMA_DONT_USE_WRAPPER", "1"))
 
 # Print the macros for debugging
 print(f"Define macros: {define_macros}")
@@ -108,6 +117,10 @@ print(f"Final libraries list: {libraries}")
 print(f"Final library_dirs list: {library_dirs}")
 
 # Define the extension module
+extra_link_args_ext = []
+if platform.system() == 'Darwin':
+    extra_link_args_ext = ['-framework', 'Accelerate']
+
 ext_modules = [
     Extension(
         'tlars.tlars_cpp',
@@ -116,6 +129,7 @@ ext_modules = [
         library_dirs=library_dirs,
         libraries=libraries,
         define_macros=define_macros,
+        extra_link_args=extra_link_args_ext,
         language='c++'
     ),
 ]
