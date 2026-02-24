@@ -93,6 +93,9 @@ elif platform.system() != 'Windows':
     libraries.extend(['armadillo', 'blas', 'lapack'])
     print("Adding armadillo, blas and lapack libraries for Linux")
 
+# Check if building without BLAS/LAPACK (e.g., Windows ARM64 cross-compilation)
+arma_no_blas = os.environ.get('ARMA_NO_BLAS', '').strip() == '1'
+
 # Define macros - removed flags that disable BLAS/LAPACK
 define_macros = [
     ("ARMA_USE_EXTERN_CXX11_RNG", "1"),
@@ -103,6 +106,12 @@ if platform.system() == 'Darwin':
     define_macros.append(("ARMA_USE_BLAS", "1"))
     define_macros.append(("ARMA_USE_LAPACK", "1"))
     define_macros.append(("ARMA_DONT_USE_WRAPPER", "1"))
+elif arma_no_blas:
+    # No external BLAS/LAPACK available; use Armadillo's internal fallbacks
+    define_macros.append(("ARMA_DONT_USE_BLAS", "1"))
+    define_macros.append(("ARMA_DONT_USE_LAPACK", "1"))
+    define_macros.append(("ARMA_DONT_USE_WRAPPER", "1"))
+    print("ARMA_NO_BLAS=1: building without external BLAS/LAPACK")
 
 # Print the macros for debugging
 print(f"Define macros: {define_macros}")

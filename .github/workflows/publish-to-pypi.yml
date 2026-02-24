@@ -20,6 +20,19 @@ jobs:
             cibw_archs: "x86_64 arm64"
           - os: windows-latest
             cibw_archs: "AMD64"
+            cibw_env_windows: >-
+              ARMADILLO_INCLUDE_DIR=C:/armadillo/include
+              OPENBLAS_HOME=C:/openblas
+              LIBRARY_PATH=C:/openblas/lib
+              SKIP_ARMADILLO_LINKING=1
+              USE_OPENBLAS=1
+              BLAS_LAPACK_DIR=C:/blas_lapack
+          - os: windows-latest
+            cibw_archs: "ARM64"
+            cibw_env_windows: >-
+              ARMADILLO_INCLUDE_DIR=C:/armadillo/include
+              SKIP_ARMADILLO_LINKING=1
+              ARMA_NO_BLAS=1
     
     steps:
       - uses: actions/checkout@v4
@@ -40,8 +53,8 @@ jobs:
       - name: Install cibuildwheel
         run: python -m pip install --upgrade pip cibuildwheel
       
-      - name: Install dependencies (Windows)
-        if: runner.os == 'Windows'
+      - name: Install dependencies (Windows AMD64)
+        if: runner.os == 'Windows' && matrix.cibw_archs == 'AMD64'
         shell: pwsh
         run: |
           # Install OpenBLAS
@@ -91,6 +104,34 @@ jobs:
           echo "SKIP_ARMADILLO_LINKING=1" >> $env:GITHUB_ENV
           echo "USE_OPENBLAS=1" >> $env:GITHUB_ENV
       
+      - name: Install dependencies (Windows ARM64)
+        if: runner.os == 'Windows' && matrix.cibw_archs == 'ARM64'
+        shell: pwsh
+        run: |
+          # Armadillo headers only (no BLAS/LAPACK for ARM64 cross-compilation)
+          $armaDir = "C:/armadillo"
+          $armaIncludeDir = "$armaDir/include"
+          mkdir -Force $armaDir
+          mkdir -Force $armaIncludeDir
+          
+          git clone --depth 1 https://gitlab.com/conradsnicta/armadillo-code.git "$env:TEMP/arma-clone"
+          
+          # Write Armadillo config without BLAS/LAPACK
+          @(
+              "// Armadillo configuration for Windows ARM64 (no external BLAS/LAPACK)",
+              "#define ARMA_USE_EXTERN_CXX11_RNG",
+              "#define ARMA_DONT_USE_BLAS",
+              "#define ARMA_DONT_USE_LAPACK",
+              "#define ARMA_DONT_USE_WRAPPER"
+          ) | Out-File -FilePath "$armaIncludeDir/config.hpp" -Encoding ascii
+          
+          Copy-Item -Path "$env:TEMP/arma-clone/include/*" -Destination $armaIncludeDir -Recurse -Force
+          
+          echo "ARMADILLO_INCLUDE_DIR=C:/armadillo/include" >> $env:GITHUB_ENV
+          echo "PLATFORM=Windows" >> $env:GITHUB_ENV
+          echo "SKIP_ARMADILLO_LINKING=1" >> $env:GITHUB_ENV
+          echo "ARMA_NO_BLAS=1" >> $env:GITHUB_ENV
+      
       - name: Build wheels
         env:
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
@@ -108,13 +149,7 @@ jobs:
             CPLUS_INCLUDE_PATH=/usr/local/include
           CIBW_REPAIR_WHEEL_COMMAND_MACOS: >-
             delocate-wheel -w {dest_dir} -v {wheel}
-          CIBW_ENVIRONMENT_WINDOWS: >-
-            ARMADILLO_INCLUDE_DIR=C:/armadillo/include
-            OPENBLAS_HOME=C:/openblas
-            LIBRARY_PATH=C:/openblas/lib
-            SKIP_ARMADILLO_LINKING=1
-            USE_OPENBLAS=1
-            BLAS_LAPACK_DIR=C:/blas_lapack
+          CIBW_ENVIRONMENT_WINDOWS: ${{ matrix.cibw_env_windows }}
         run: python -m cibuildwheel --output-dir dist
       
       - name: Build source distribution
