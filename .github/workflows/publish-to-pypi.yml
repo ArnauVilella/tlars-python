@@ -101,6 +101,7 @@ jobs:
             yum install -y blas-devel lapack-devel armadillo-devel
           CIBW_BEFORE_ALL_MACOS: >-
             git clone --depth 1 https://gitlab.com/conradsnicta/armadillo-code.git /tmp/arma-clone &&
+            sudo mkdir -p /usr/local/include &&
             sudo cp -r /tmp/arma-clone/include/* /usr/local/include/
           CIBW_ENVIRONMENT_MACOS: >-
             MACOSX_DEPLOYMENT_TARGET=11.0
