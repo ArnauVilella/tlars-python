@@ -1,7 +1,6 @@
 from .tlars_cpp import tlars_cpp
 import numpy as np
 import time
-import matplotlib.pyplot as plt
 from typing import Optional, List, Dict, Union, Any, Tuple
 
 class TLARS:
@@ -16,7 +15,7 @@ class TLARS:
         Response vector.
     verbose : bool, default=False
         If True, progress in computations is shown.
-    intercept : bool, default=True
+    intercept : bool, default=False
         If True, an intercept is included.
     standardize : bool, default=True
         If True, the predictors are standardized and the response is centered.
@@ -29,7 +28,7 @@ class TLARS:
         the forward selection process exactly where it was previously terminated). The lars_state
         is extracted from a TLARS object via get_all() and is only required when the
         object is deleted or got lost in another Python session.
-    info : bool, default=True
+    info : bool, default=False
         If True and object is not recreated from previous T-LARS state, then information about 
         the created object is printed.
     """
@@ -102,7 +101,7 @@ class TLARS:
         early_stop : bool, default=True
             If True, then the forward selection process is stopped after T_stop 
             dummies have been included. Otherwise the entire solution path is computed.
-        info : bool, default=True
+        info : bool, default=False
             If True, information about the T-LARS step is printed.
             
         Returns
@@ -185,6 +184,14 @@ class TLARS:
         ax : matplotlib.axes.Axes
             The matplotlib axes object.
         """
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            raise ImportError(
+                "matplotlib is required for plotting. "
+                "Install it with: pip install tlars[plot]"
+            )
+        
         # Check if the type is 'lar'
         method_type = self._model.type
         if method_type != "lar":

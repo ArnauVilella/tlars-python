@@ -15,7 +15,7 @@ for k, v in os.environ.items():
     if 'ARM' in k.upper() or 'INCLUDE' in k.upper() or 'LIB' in k.upper():
         print(f"  {k}: {v}")
 
-__version__ = '0.7.0'
+__version__ = '0.7.11'
 
 # Detect platform
 is_windows = sys.platform.startswith('win')
@@ -155,7 +155,7 @@ class BuildExt(build_ext):
     }
 
     if sys.platform == 'darwin':
-        darwin_opts = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+        darwin_opts = ['-stdlib=libc++']
         c_opts['unix'] += darwin_opts
         l_opts['unix'] += darwin_opts
 
@@ -220,16 +220,25 @@ setup(
     description='Python port of the tlars R package by Jasin Machkour',
     long_description='',
     ext_modules=ext_modules,
-    install_requires=['pybind11>=2.6.0', 'numpy', 'matplotlib>=3.3.0'],
-    setup_requires=['pybind11>=2.6.0', 'numpy', 'matplotlib>=3.3.0'],
+    install_requires=['numpy'],
+    setup_requires=['pybind11>=2.12', 'numpy'],
     cmdclass={'build_ext': BuildExt},
     packages=['tlars'],
     zip_safe=False,
     python_requires='>=3.8',
     classifiers=[
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: POSIX :: Linux",
+        "Operating System :: MacOS",
+        "Operating System :: Microsoft :: Windows",
         "Topic :: Scientific/Engineering :: Mathematics",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Intended Audience :: Science/Research",

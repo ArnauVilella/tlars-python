@@ -26,7 +26,10 @@ from tlars import TLARS, generate_gaussian_data
 
 # Generate some example data using the built-in function
 n, p = 100, 20
-X, y, beta = generate_gaussian_data(n=n, p=p, seed=42)
+data = generate_gaussian_data(n=n, p=p, seed=42)
+X = data['X']
+y = data['y']
+beta = data['beta']
 
 # Alternatively, create your own data
 X = np.random.randn(n, p)
@@ -62,8 +65,8 @@ model.plot(include_dummies=True, show_actions=True)
 #### Constructor
 
 ```python
-TLARS(X=None, y=None, verbose=False, intercept=True, standardize=True, 
-      num_dummies=0, type='lar', lars_state=None, info=True)
+TLARS(X=None, y=None, verbose=False, intercept=False, standardize=True, 
+      num_dummies=0, type='lar', lars_state=None, info=False)
 ```
 
 - **X**: numpy.ndarray - Real valued predictor matrix.
@@ -78,7 +81,7 @@ TLARS(X=None, y=None, verbose=False, intercept=True, standardize=True,
 
 #### Methods
 
-- **fit(T_stop=None, early_stop=True, info=True)**: Fit the TLARS model.
+- **fit(T_stop=None, early_stop=True, info=False)**: Fit the TLARS model.
   - **T_stop**: int - Number of included dummies after which the random experiments are stopped.
   - **early_stop**: bool - If True, then the forward selection process is stopped after T_stop dummies have been included.
   - **info**: bool - If True, informational messages are displayed during fitting.
@@ -118,7 +121,7 @@ TLARS(X=None, y=None, verbose=False, intercept=True, standardize=True,
   - **n**: int - Number of observations.
   - **p**: int - Number of variables.
   - **seed**: int - Random seed for reproducibility.
-  - **Returns**: tuple - (X, y, beta) where X is the design matrix, y is the response, and beta is the true coefficient vector.
+  - **Returns**: dict - Dictionary with keys 'X' (design matrix), 'y' (response), 'beta' (true coefficients), and 'support' (boolean mask of non-zero coefficients).
 
 ## License
 
