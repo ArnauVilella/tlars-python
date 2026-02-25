@@ -15,7 +15,7 @@ for k, v in os.environ.items():
     if 'ARM' in k.upper() or 'INCLUDE' in k.upper() or 'LIB' in k.upper():
         print(f"  {k}: {v}")
 
-__version__ = '0.7.13'
+__version__ = '0.7.14'
 
 # Detect platform
 is_windows = sys.platform.startswith('win')
@@ -59,14 +59,59 @@ if platform.system() == 'Windows' and not skip_linking:
         libraries.append('armadillo')
         print(f"Using Armadillo lib dir from environment: {armadillo_lib}")
 
-        # Auto-detect the actual BLAS library name (conda-forge MKL provides mkl_rt.lib, not blas.lib)
-        for candidate in ['blas', 'lapack', 'mkl_rt']:
+        # List all .lib files in the library directory for debugging
+        import glob
+        lib_files = glob.glob(os.path.join(armadillo_lib, '*.lib'))
+        print(f"  Available .lib files in {armadillo_lib} ({len(lib_files)} total):")
+        for f in sorted(lib_files):
+            print(f"    {os.path.basename(f)}")
+
+        # Auto-detect BLAS/LAPACK library (needed to resolve symbols from armadillo.lib)
+        # conda-forge MKL provides different names depending on version
+        blas_found = False
+        blas_candidates = ['mkl_rt', 'mkl_rt.2', 'mkl_rt.1', 'blas', 'openblas', 'cblas', 'libblas']
+        for candidate in blas_candidates:
             candidate_path = os.path.join(armadillo_lib, candidate + '.lib')
             if os.path.isfile(candidate_path):
                 libraries.append(candidate)
-                print(f"  Found {candidate}.lib")
+                blas_found = True
+                print(f"  Found BLAS library: {candidate}.lib")
+                break
             else:
                 print(f"  {candidate}.lib not found, skipping")
+
+        # Fallback: glob for any mkl*.lib file
+        if not blas_found:
+            mkl_libs = glob.glob(os.path.join(armadillo_lib, 'mkl_rt*.lib'))
+            if mkl_libs:
+                # Pick the first mkl_rt variant found
+                mkl_lib_name = os.path.splitext(os.path.basename(mkl_libs[0]))[0]
+                libraries.append(mkl_lib_name)
+                blas_found = True
+                print(f"  Found MKL library via glob: {mkl_lib_name}.lib")
+
+        # If still no BLAS found, try to find any BLAS-like library
+        if not blas_found:
+            for f in lib_files:
+                basename = os.path.basename(f).lower()
+                if any(name in basename for name in ['blas', 'lapack', 'mkl', 'openblas']):
+                    lib_name = os.path.splitext(os.path.basename(f))[0]
+                    libraries.append(lib_name)
+                    blas_found = True
+                    print(f"  Found BLAS-like library via scan: {lib_name}.lib")
+                    break
+
+        if not blas_found:
+            print("  WARNING: No BLAS/LAPACK library found! Linking may fail with unresolved symbols.")
+
+        # Also check for separate lapack library (not needed if using MKL which includes LAPACK)
+        if blas_found and not any('mkl' in lib for lib in libraries):
+            for candidate in ['lapack', 'liblapack']:
+                candidate_path = os.path.join(armadillo_lib, candidate + '.lib')
+                if os.path.isfile(candidate_path):
+                    libraries.append(candidate)
+                    print(f"  Found LAPACK library: {candidate}.lib")
+                    break
     else:
         # Hardcoded standalone armadillo: use wrapper + try to find BLAS/LAPACK
         libraries.append('armadillo')
