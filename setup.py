@@ -130,6 +130,7 @@ elif skip_linking and use_openblas:
                 if libraries:
                     break
 elif platform.system() == 'Darwin':
+    libraries.append('armadillo')
     if os.environ.get('CONDA_BUILD', '') == '1':
         # conda-forge provides BLAS/LAPACK via host deps; link against them
         libraries.extend(['blas', 'lapack'])
@@ -233,10 +234,12 @@ class BuildExt(build_ext):
                 opts.append('/DARMA_USE_BLAS')
                 opts.append('/DARMA_USE_LAPACK')
 
-        for ext in self.extensions:
-            ext.extra_compile_args = opts.copy()
-            ext.extra_link_args = link_opts.copy()
-            ext.define_macros = [(name, value) for name, value in ext.define_macros]
+            for ext in self.extensions:
+                ext.extra_compile_args = opts.copy()
+                if not hasattr(ext, 'extra_link_args') or ext.extra_link_args is None:
+                    ext.extra_link_args = []
+                ext.extra_link_args.extend(link_opts)
+                ext.define_macros = [(name, value) for name, value in ext.define_macros]
 
         build_ext.build_extensions(self)
 
