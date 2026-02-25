@@ -130,10 +130,9 @@ elif skip_linking and use_openblas:
                 if libraries:
                     break
 elif platform.system() == 'Darwin':
-    libraries.append('armadillo')
     if os.environ.get('CONDA_BUILD', '') == '1':
         # conda-forge provides BLAS/LAPACK via host deps; link against them
-        libraries.extend(['blas', 'lapack'])
+        libraries.extend(['armadillo', 'blas', 'lapack'])
     else:
         pass  # pip/local: use the Accelerate framework (linked below)
 elif platform.system() != 'Windows':
