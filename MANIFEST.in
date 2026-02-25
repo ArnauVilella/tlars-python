@@ -15,6 +15,5 @@ recursive-include tests *.py
 # Include examples
 recursive-include examples *
 
-# Include pybind11 and carma submodules (these are git submodules)
-graft pybind11/include
-graft carma/include 
+# carma is header-only and not on PyPI, so bundle it for pip/sdist builds
+graft carma/include

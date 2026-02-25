@@ -4,19 +4,43 @@ import sys
 import os
 import setuptools
 import numpy as np
+import pybind11
 import platform
 import glob
 
 __version__ = '0.7.14'
 
+
+def _find_carma_include():
+    """Discover carma include directory from the environment."""
+    # 1) Explicit env var
+    carma_inc = os.environ.get('CARMA_INCLUDE_DIR', '').strip()
+    if carma_inc and os.path.isdir(carma_inc):
+        return carma_inc
+    # 2) conda PREFIX (works inside conda-build and conda environments)
+    prefix = os.environ.get('PREFIX', os.environ.get('CONDA_PREFIX', '')).strip()
+    if prefix:
+        candidate = os.path.join(prefix, 'include')
+        if os.path.isfile(os.path.join(candidate, 'carma')):
+            return candidate
+    # 3) Fallback: local submodule (development only)
+    local = os.path.join(os.path.dirname(__file__), 'carma', 'include')
+    if os.path.isdir(local):
+        return local
+    return None
+
+
 # Prepare environment for compilation
 include_dirs = [
-    "pybind11/include",
-    "carma/include",
-    "/usr/include",
+    pybind11.get_include(),
     "src",
     np.get_include(),
 ]
+
+# Add carma include path
+_carma_inc = _find_carma_include()
+if _carma_inc:
+    include_dirs.append(_carma_inc)
 
 # Check for Armadillo from environment variables
 armadillo_include = os.environ.get('ARMADILLO_INCLUDE_DIR', '').strip()
