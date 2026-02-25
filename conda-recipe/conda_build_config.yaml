@@ -1,22 +1,5 @@
-python:
-  - 3.9
-  - 3.10
-  - 3.11
-  - 3.12
-  - 3.13
-  - 3.14
-numpy:
-  - 1.26
-  - 1.26
-  - 1.26
-  - 2.0
-  - 2.1
-  - 2.3
-zip_keys:
-  - - python
-    - numpy
-
-c_compiler:                # [win]
-  - vs2022                 # [win]
-cxx_compiler:              # [win]
-  - vs2022                 # [win]
+# Python versions, numpy pins, zip_keys, and compiler versions
+# are inherited from conda-forge's global pinning:
+# https://github.com/conda-forge/conda-forge-pinning-feedstock
+#
+# Only add overrides here if you need to diverge from conda-forge defaults.

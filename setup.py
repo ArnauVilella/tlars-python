@@ -42,12 +42,17 @@ _carma_inc = _find_carma_include()
 if _carma_inc:
     include_dirs.append(_carma_inc)
 
-# Check for Armadillo from environment variables
+# Discover Armadillo include directory
 armadillo_include = os.environ.get('ARMADILLO_INCLUDE_DIR', '').strip()
-if armadillo_include:
+if armadillo_include and os.path.isdir(armadillo_include):
     include_dirs.append(armadillo_include)
-elif platform.system() == 'Windows':
-    include_dirs.append(os.path.join('C:', os.sep, 'armadillo', 'include'))
+else:
+    # Try conda PREFIX / CONDA_PREFIX
+    _prefix = os.environ.get('PREFIX', os.environ.get('CONDA_PREFIX', '')).strip()
+    if _prefix:
+        _arma_cand = os.path.join(_prefix, 'include')
+        if os.path.isfile(os.path.join(_arma_cand, 'armadillo')):
+            include_dirs.append(_arma_cand)
 
 libraries = []
 library_dirs = []
@@ -98,9 +103,14 @@ if platform.system() == 'Windows' and not skip_linking:
                     libraries.append(candidate)
                     break
     else:
-        libraries.append('armadillo')
-        lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')
-        library_dirs.append(lib_path)
+        # Try conda PREFIX / CONDA_PREFIX for armadillo lib
+        _prefix = os.environ.get('PREFIX', os.environ.get('CONDA_PREFIX', '')).strip()
+        _arma_lib = os.path.join(_prefix, 'lib') if _prefix else ''
+        if _arma_lib and os.path.isdir(_arma_lib):
+            libraries.append('armadillo')
+            library_dirs.append(_arma_lib)
+        else:
+            libraries.append('armadillo')
 elif skip_linking and use_openblas:
     blas_dir = os.environ.get('BLAS_LAPACK_DIR', '').strip()
     if blas_dir:
