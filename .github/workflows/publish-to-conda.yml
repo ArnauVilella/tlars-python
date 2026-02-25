@@ -1,8 +1,5 @@
 name: Publish to Conda (Anaconda.org)
 
-# This workflow builds conda packages and uploads them to your Anaconda.org channel.
-# Manually triggered only.
-
 on:
   workflow_dispatch:
 
