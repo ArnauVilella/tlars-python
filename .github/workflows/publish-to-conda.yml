@@ -40,4 +40,11 @@ jobs:
         env:
           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
         run: |
-          anaconda -t "$ANACONDA_API_TOKEN" upload --force conda-out/**/tlars-*.tar.bz2
+          shopt -s globstar nullglob
+          files=(conda-out/**/tlars-*.conda conda-out/**/tlars-*.tar.bz2)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No conda packages found!"
+            ls -R conda-out/
+            exit 1
+          fi
+          anaconda -t "$ANACONDA_API_TOKEN" upload --force "${files[@]}"
