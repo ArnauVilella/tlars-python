@@ -15,3 +15,8 @@ numpy:
 zip_keys:
   - - python
     - numpy
+
+c_compiler:                # [win]
+  - vs2022                 # [win]
+cxx_compiler:              # [win]
+  - vs2022                 # [win]
