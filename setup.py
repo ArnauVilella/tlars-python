@@ -54,11 +54,19 @@ use_openblas = platform.system() == 'Windows' and os.environ.get('USE_OPENBLAS',
 if platform.system() == 'Windows' and not skip_linking:
     # Only add armadillo to libraries if not skipping
     libraries.append('armadillo')
+    # Also link against BLAS and LAPACK (armadillo.lib is a wrapper that needs them)
+    libraries.extend(['blas', 'lapack'])
     
-    # Ensure proper path format with backslash after C:\
-    lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')
-    library_dirs.append(lib_path)
-    print(f"Using hardcoded Windows Armadillo lib path: {lib_path}")
+    # Use ARMADILLO_LIB_DIR if set (e.g., from conda-build), otherwise hardcoded path
+    armadillo_lib = os.environ.get('ARMADILLO_LIB_DIR', '').strip()
+    if armadillo_lib:
+        library_dirs.append(armadillo_lib)
+        print(f"Using Armadillo lib dir from environment: {armadillo_lib}")
+    else:
+        # Ensure proper path format with backslash after C:\
+        lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')
+        library_dirs.append(lib_path)
+        print(f"Using hardcoded Windows Armadillo lib path: {lib_path}")
 elif skip_linking and use_openblas:
     # Add OpenBLAS for Windows build
     blas_dir = os.environ.get('BLAS_LAPACK_DIR', '').strip()
