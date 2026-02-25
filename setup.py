@@ -52,18 +52,26 @@ skip_linking = platform.system() == 'Windows' and os.environ.get('SKIP_ARMADILLO
 use_openblas = platform.system() == 'Windows' and os.environ.get('USE_OPENBLAS', '').strip() == '1'
 
 if platform.system() == 'Windows' and not skip_linking:
-    # Only add armadillo to libraries if not skipping
-    libraries.append('armadillo')
-    # Also link against BLAS and LAPACK (armadillo.lib is a wrapper that needs them)
-    libraries.extend(['blas', 'lapack'])
-    
     # Use ARMADILLO_LIB_DIR if set (e.g., from conda-build), otherwise hardcoded path
     armadillo_lib = os.environ.get('ARMADILLO_LIB_DIR', '').strip()
     if armadillo_lib:
         library_dirs.append(armadillo_lib)
+        # conda-forge armadillo is a shared lib that already links to MKL/BLAS internally,
+        # so we only need to link against armadillo itself.
+        libraries.append('armadillo')
         print(f"Using Armadillo lib dir from environment: {armadillo_lib}")
+
+        # Auto-detect the actual BLAS library name (conda-forge MKL provides mkl_rt.lib, not blas.lib)
+        for candidate in ['blas', 'lapack', 'mkl_rt']:
+            candidate_path = os.path.join(armadillo_lib, candidate + '.lib')
+            if os.path.isfile(candidate_path):
+                libraries.append(candidate)
+                print(f"  Found {candidate}.lib")
+            else:
+                print(f"  {candidate}.lib not found, skipping")
     else:
-        # Ensure proper path format with backslash after C:\
+        # Hardcoded standalone armadillo: use wrapper + try to find BLAS/LAPACK
+        libraries.append('armadillo')
         lib_path = os.path.join('C:', os.sep, 'armadillo', 'lib')
         library_dirs.append(lib_path)
         print(f"Using hardcoded Windows Armadillo lib path: {lib_path}")
