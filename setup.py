@@ -15,7 +15,7 @@ for k, v in os.environ.items():
     if 'ARM' in k.upper() or 'INCLUDE' in k.upper() or 'LIB' in k.upper():
         print(f"  {k}: {v}")
 
-__version__ = '0.7.11'
+__version__ = '0.7.12'
 
 # Detect platform
 is_windows = sys.platform.startswith('win')

@@ -1,5 +1,5 @@
 {% set name = "tlars" %}
-{% set version = "0.7.11" %}
+{% set version = "0.7.12" %}
 
 package:
   name: {{ name|lower }}
