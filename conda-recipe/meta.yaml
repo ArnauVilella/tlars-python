@@ -14,8 +14,6 @@ source:
 build:
   number: 0
   skip: true  # [py<310]
-  script: bld.bat  # [win]
-  script: build.sh  # [not win]
 
 requirements:
   build:
