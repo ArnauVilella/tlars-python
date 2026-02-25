@@ -1,5 +1,11 @@
-# Python versions, numpy pins, zip_keys, and compiler versions
-# are inherited from conda-forge's global pinning:
+# Python versions, numpy pins, and zip_keys are inherited from
+# conda-forge's global pinning when building on conda-forge.
 # https://github.com/conda-forge/conda-forge-pinning-feedstock
 #
-# Only add overrides here if you need to diverge from conda-forge defaults.
+# The compiler override below is needed for builds on our own channel
+# (GitHub Actions), where conda-forge's global pinning is not available.
+
+c_compiler:                # [win]
+  - vs2022                 # [win]
+cxx_compiler:              # [win]
+  - vs2022                 # [win]
