@@ -36,14 +36,18 @@ requirements:
     - blas-devel                             # [win]
   run:
     - python
-    - {{ pin_compatible('numpy') }}
+    - numpy
 
 test:
+  source_files:
+    - tests/
   imports:
     - tlars
     - tlars.tlars_cpp
+  requires:
+    - pytest
   commands:
-    - python -c "from tlars import TLARS; print('tlars imported successfully')"
+    - pytest tests/ -v
 
 about:
   home: https://github.com/ArnauVilella/tlars-python
@@ -55,6 +59,7 @@ about:
     with early termination based on dummy variables.
   license: GPL-3.0-only
   license_file: LICENSE
+  doc_url: https://github.com/ArnauVilella/tlars-python#readme
   dev_url: https://github.com/ArnauVilella/tlars-python
 
 extra:
