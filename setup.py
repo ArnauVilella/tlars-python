@@ -56,8 +56,6 @@ if platform.system() == 'Windows' and not skip_linking:
     armadillo_lib = os.environ.get('ARMADILLO_LIB_DIR', '').strip()
     if armadillo_lib:
         library_dirs.append(armadillo_lib)
-        # conda-forge armadillo is a shared lib that already links to MKL/BLAS internally,
-        # so we only need to link against armadillo itself.
         libraries.append('armadillo')
         print(f"Using Armadillo lib dir from environment: {armadillo_lib}")
 
