@@ -8,7 +8,7 @@ import pybind11
 import platform
 import glob
 
-__version__ = '0.7.14'
+__version__ = '0.8.0'
 
 
 def _find_carma_include():
@@ -130,7 +130,11 @@ elif skip_linking and use_openblas:
                 if libraries:
                     break
 elif platform.system() == 'Darwin':
-    pass  # macOS: use the Accelerate framework
+    if os.environ.get('CONDA_BUILD', '') == '1':
+        # conda-forge provides BLAS/LAPACK via host deps; link against them
+        libraries.extend(['blas', 'lapack'])
+    else:
+        pass  # pip/local: use the Accelerate framework (linked below)
 elif platform.system() != 'Windows':
     libraries.extend(['armadillo', 'blas', 'lapack'])
 
@@ -143,14 +147,15 @@ define_macros = [
 if platform.system() == 'Darwin':
     define_macros.append(("ARMA_USE_BLAS", "1"))
     define_macros.append(("ARMA_USE_LAPACK", "1"))
-    define_macros.append(("ARMA_DONT_USE_WRAPPER", "1"))
+    if os.environ.get('CONDA_BUILD', '') != '1':
+        define_macros.append(("ARMA_DONT_USE_WRAPPER", "1"))
 elif arma_no_blas:
     define_macros.append(("ARMA_DONT_USE_BLAS", "1"))
     define_macros.append(("ARMA_DONT_USE_LAPACK", "1"))
     define_macros.append(("ARMA_DONT_USE_WRAPPER", "1"))
 
 extra_link_args_ext = []
-if platform.system() == 'Darwin':
+if platform.system() == 'Darwin' and os.environ.get('CONDA_BUILD', '') != '1':
     extra_link_args_ext = ['-framework', 'Accelerate']
 
 ext_modules = [
