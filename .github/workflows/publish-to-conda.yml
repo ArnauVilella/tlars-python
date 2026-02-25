@@ -43,8 +43,6 @@ jobs:
           files=$(find conda-out -name "tlars-*.conda" -o -name "tlars-*.tar.bz2")
           if [ -z "$files" ]; then
             echo "No conda packages found!"
-            ls -R conda-out/
             exit 1
           fi
-          echo "Uploading: $files"
           anaconda -t "$ANACONDA_API_TOKEN" upload --force $files
