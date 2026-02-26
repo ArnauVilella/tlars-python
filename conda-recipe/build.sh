@@ -1,9 +1,6 @@
 #!/bin/bash
 set -ex
 
-# conda-forge provides armadillo, blas, lapack via host dependencies.
-# We need to make sure the build can find them.
-
 # Remove vendored carma so the conda-forge host package is used instead
 rm -rf carma/
 
